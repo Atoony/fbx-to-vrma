@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FBX to VRMA Workbench</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #12110f;
+      color: #f2eadc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(182, 139, 65, 0.18), transparent 32%),
+        linear-gradient(160deg, #14120f, #0d0c0a);
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .boot {
+      width: min(560px, 100%);
+      padding: 28px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(24, 21, 18, 0.88);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+    }
+
+    .boot h1 {
+      margin: 0 0 12px;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      line-height: 0.95;
+    }
+
+    .boot p {
+      margin: 0;
+      line-height: 1.7;
+      color: rgba(242, 234, 220, 0.78);
+    }
+  </style>
+</head>
+<body>
+  <main class="boot" id="boot">
+    <h1>FBX to VRMA Workbench</h1>
+    <p>正在加载静态页面资源。如果部署在 Cloudflare Pages，这一步完成后会切换到完整工作台。</p>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FBX to VRMA Workbench</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=Red+Hat+Display:wght@400;500;700&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.177.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.177.0/examples/jsm/",
+            "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.4.2/lib/three-vrm.module.min.js",
+            "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3.4.2/lib/three-vrm-animation.module.js"
+        }
+    }
+    </script>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: oklch(0.14 0.015 72);
+            --bg-soft: oklch(0.18 0.016 72);
+            --panel: oklch(0.21 0.014 72);
+            --panel-strong: oklch(0.25 0.018 72);
+            --border: oklch(0.34 0.03 72 / 0.45);
+            --line: oklch(0.47 0.06 72 / 0.45);
+            --text: oklch(0.89 0.018 84);
+            --text-soft: oklch(0.72 0.02 82);
+            --text-dim: oklch(0.58 0.018 82);
+            --accent: oklch(0.76 0.14 72);
+            --accent-strong: oklch(0.69 0.15 58);
+            --success: oklch(0.73 0.11 150);
+            --warn: oklch(0.8 0.12 80);
+            --error: oklch(0.67 0.18 29);
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+            --space-7: 48px;
+            --radius-sm: 12px;
+            --radius-md: 18px;
+            --radius-lg: 28px;
+            --frame-gap-top: 20px;
+            --frame-gap-bottom: 28px;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+            --font-display: "Chivo", sans-serif;
+            --font-body: "Red Hat Display", sans-serif;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-body);
+            background:
+                radial-gradient(circle at top left, rgba(182, 139, 65, 0.22), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(86, 130, 113, 0.18), transparent 32%),
+                linear-gradient(160deg, oklch(0.12 0.016 72), oklch(0.1 0.012 62));
+            color: var(--text);
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .shell {
+            width: min(1600px, calc(100vw - 32px));
+            margin: var(--frame-gap-top) auto var(--frame-gap-bottom);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: var(--space-5);
+            min-height: calc(100dvh - (var(--frame-gap-top) + var(--frame-gap-bottom)));
+        }
+
+        .masthead {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) auto;
+            gap: var(--space-4);
+            padding: clamp(20px, 3vw, 32px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background:
+                linear-gradient(135deg, rgba(255, 206, 125, 0.08), transparent 30%),
+                linear-gradient(180deg, rgba(19, 18, 16, 0.82), rgba(26, 24, 22, 0.9));
+            box-shadow: var(--shadow);
+        }
+
+        .kicker {
+            margin-bottom: var(--space-2);
+            font-size: 12px;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        h1 {
+            margin: 0;
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 4vw, 3.8rem);
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+            max-width: 12ch;
+        }
+
+        .lede {
+            max-width: 62ch;
+            margin-top: var(--space-3);
+            color: var(--text-soft);
+            line-height: 1.68;
+        }
+
+        .masthead-side {
+            display: grid;
+            align-content: space-between;
+            gap: var(--space-4);
+            min-width: 300px;
+        }
+
+        .status-strip,
+        .badge-strip {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: var(--space-2);
+        }
+
+        .status-pill,
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-soft);
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: var(--text-dim);
+            box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.03);
+        }
+
+        .status-dot[data-tone="loading"] { background: var(--warn); }
+        .status-dot[data-tone="ready"] { background: var(--success); }
+        .status-dot[data-tone="error"] { background: var(--error); }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1.18fr) minmax(380px, 0.88fr);
+            gap: var(--space-5);
+            min-height: 0;
+            align-items: start;
+        }
+
+        .stage-column,
+        .rail {
+            min-width: 0;
+        }
+
+        .stage-panel,
+        .rail {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, rgba(28, 26, 24, 0.94), rgba(19, 18, 17, 0.98));
+            box-shadow: var(--shadow);
+        }
+
+        .stage-panel {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            overflow: hidden;
+            min-height: min(820px, calc(100dvh - 180px));
+        }
+
+        .stage-toolbar,
+        .stage-footer {
+            display: grid;
+            gap: var(--space-3);
+            padding: var(--space-4) var(--space-5);
+        }
+
+        .stage-toolbar {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stage-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .toolbar-main,
+        .toolbar-sub,
+        .footer-main {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+        }
+
+        .button-row,
+        .transport-row,
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+            align-items: center;
+        }
+
+        button,
+        select {
+            font: inherit;
+        }
+
+        .action-button,
+        .ghost-button,
+        .transport-button {
+            appearance: none;
+            border: 0;
+            cursor: pointer;
+            transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+        }
+
+        .action-button,
+        .ghost-button {
+            border-radius: 999px;
+            padding: 11px 16px;
+        }
+
+        .action-button {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: oklch(0.2 0.02 70);
+            font-weight: 700;
+        }
+
+        .ghost-button {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-soft);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .ghost-button[data-active="true"] {
+            border-color: rgba(255, 206, 125, 0.55);
+            color: var(--text);
+            background: rgba(255, 206, 125, 0.08);
+        }
+
+        .transport-button {
+            min-width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: inline-grid;
+            place-items: center;
+            padding: 0 14px;
+        }
+
+        .action-button:hover:not([disabled]),
+        .ghost-button:hover:not([disabled]),
+        .transport-button:hover:not([disabled]) {
+            transform: translateY(-1px);
+        }
+
+        .action-button[disabled],
+        .ghost-button[disabled],
+        .transport-button[disabled] {
+            opacity: 0.4;
+            cursor: default;
+            transform: none;
+        }
+
+        .speed-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-soft);
+            font-size: 13px;
+        }
+
+        .speed-wrap select {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: var(--text);
+            outline: none;
+        }
+
+        .active-hint {
+            color: var(--text-dim);
+            font-size: 13px;
+            min-height: 20px;
+        }
+
+        .transport-label {
+            color: var(--text-dim);
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .dropzone {
+            position: relative;
+            min-height: clamp(320px, 44dvh, 520px);
+            background:
+                radial-gradient(circle at 50% 15%, rgba(255, 196, 99, 0.08), transparent 24%),
+                linear-gradient(180deg, rgba(24, 22, 20, 0.78), rgba(16, 15, 14, 0.96));
+        }
+
+        .dropzone.dragover::after {
+            content: "";
+            position: absolute;
+            inset: 16px;
+            border-radius: 24px;
+            border: 1px dashed rgba(255, 202, 116, 0.9);
+            pointer-events: none;
+        }
+
+        #viewport {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: clamp(320px, 44dvh, 520px);
+        }
+
+        .empty-overlay,
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            transition: opacity 180ms ease;
+        }
+
+        .empty-overlay {
+            pointer-events: none;
+        }
+
+        .empty-overlay:not(.visible),
+        .loading-overlay:not(.visible) {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .overlay-card {
+            width: min(450px, calc(100% - 40px));
+            padding: clamp(20px, 3vw, 28px);
+            border-radius: 24px;
+            background: rgba(20, 18, 17, 0.76);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(18px);
+        }
+
+        .overlay-title {
+            font-family: var(--font-display);
+            font-size: clamp(1.7rem, 3vw, 2.4rem);
+            line-height: 1;
+            margin: 0 0 var(--space-3);
+            letter-spacing: -0.04em;
+        }
+
+        .overlay-copy {
+            margin: 0;
+            line-height: 1.65;
+            color: var(--text-soft);
+            max-width: 34ch;
+        }
+
+        .overlay-points {
+            display: grid;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .loading-overlay {
+            background: rgba(10, 10, 10, 0.46);
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-top-color: var(--accent);
+            animation: spin 0.85s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        #progressTrack {
+            position: relative;
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        #progressFill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+            border-radius: inherit;
+        }
+
+        #timeDisplay {
+            min-width: 88px;
+            text-align: right;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+            font-size: 12px;
+        }
+
+        .rail {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr);
+            overflow: hidden;
+            min-height: min(820px, calc(100dvh - 180px));
+            padding: var(--space-4);
+        }
+
+        .rail-scroll {
+            overflow: auto;
+            min-height: 0;
+            padding: 0 0 calc(var(--space-5) + 6px);
+            display: grid;
+            gap: var(--space-4);
+            align-content: start;
+            scrollbar-gutter: stable;
+        }
+
+        .rail-section {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.025);
+            padding: 18px;
+            display: grid;
+            gap: var(--space-3);
+            overflow: hidden;
+        }
+
+        .rail-section--export {
+            background:
+                linear-gradient(180deg, rgba(255, 202, 116, 0.035), rgba(255, 255, 255, 0.02)),
+                rgba(255, 255, 255, 0.015);
+            border-color: rgba(255, 206, 125, 0.12);
+        }
+
+        .rail-section--debug {
+            grid-template-rows: auto auto minmax(0, 1fr);
+            min-height: 320px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018)),
+                rgba(255, 255, 255, 0.018);
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: var(--space-3);
+        }
+
+        .section-head h2 {
+            margin: 0;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .section-head span {
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--space-3);
+        }
+
+        .summary-grid.compact {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .summary-card {
+            display: grid;
+            gap: 6px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .summary-card.empty {
+            opacity: 0.82;
+        }
+
+        .summary-card.accent {
+            border-color: rgba(255, 206, 125, 0.24);
+            background: rgba(255, 206, 125, 0.06);
+        }
+
+        .summary-card.error {
+            border-color: rgba(214, 92, 68, 0.35);
+            background: rgba(214, 92, 68, 0.08);
+        }
+
+        .summary-label {
+            color: var(--text-dim);
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .summary-card strong {
+            font-size: 14px;
+        }
+
+        .summary-card span:last-child {
+            color: var(--text-soft);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .inline-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .pill.success {
+            color: var(--success);
+        }
+
+        .pill.error {
+            color: #ff9b8a;
+        }
+
+        .pill.neutral {
+            color: var(--text-soft);
+        }
+
+        .mapping-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .mapping-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(170px, 220px);
+            gap: var(--space-3);
+            align-items: center;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .mapping-row.mapped {
+            border-color: rgba(255, 206, 125, 0.18);
+        }
+
+        .mapping-row.duplicate {
+            border-color: rgba(214, 92, 68, 0.32);
+            background: rgba(214, 92, 68, 0.08);
+        }
+
+        .mapping-meta {
+            display: grid;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .mapping-meta strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mapping-meta span {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .mapping-row select {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(16, 15, 14, 0.9);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px 12px;
+            outline: none;
+        }
+
+        .action-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+        }
+
+        .action-stack > * {
+            flex: 1 1 160px;
+        }
+
+        .empty-block {
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed rgba(255, 255, 255, 0.08);
+            line-height: 1.6;
+        }
+
+        .console-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: var(--space-3);
+            align-items: center;
+        }
+
+        .console-actions,
+        .console-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+            align-items: center;
+        }
+
+        .console-filter {
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .console-filter input {
+            accent-color: var(--accent);
+        }
+
+        .debug-log {
+            display: grid;
+            gap: 10px;
+            min-height: 0;
+            max-height: none;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .log-entry {
+            display: grid;
+            gap: 8px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .log-entry[data-level="error"] {
+            border-color: rgba(214, 92, 68, 0.32);
+            background: rgba(214, 92, 68, 0.08);
+        }
+
+        .log-entry[data-level="warning"] {
+            border-color: rgba(255, 206, 125, 0.24);
+            background: rgba(255, 206, 125, 0.06);
+        }
+
+        .log-head {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+            align-items: center;
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .log-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 52px;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .log-entry p,
+        .log-entry details {
+            margin: 0;
+            line-height: 1.55;
+        }
+
+        .log-entry pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 12px;
+            color: var(--text-soft);
+            background: rgba(0, 0, 0, 0.18);
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 32px;
+            transform: translateX(-50%) translateY(16px);
+            border-radius: 999px;
+            padding: 11px 16px;
+            background: rgba(214, 92, 68, 0.9);
+            color: #fff7f4;
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 160ms ease, transform 160ms ease;
+            z-index: 30;
+            box-shadow: var(--shadow);
+        }
+
+        .toast[data-tone="success"] {
+            background: rgba(67, 162, 105, 0.92);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 1180px) {
+            body {
+                overflow: auto;
+            }
+
+            .shell {
+                min-height: calc(100dvh - 48px);
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .stage-panel,
+            .rail {
+                min-height: auto;
+            }
+
+            .rail {
+                padding: 0;
+            }
+
+            .rail-scroll {
+                overflow: visible;
+                padding: 0;
+            }
+
+            .rail-section--debug {
+                min-height: 260px;
+            }
+
+            .summary-grid,
+            .summary-grid.compact {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .shell {
+                width: min(100vw - 18px, 1600px);
+                margin: 10px auto 20px;
+                gap: var(--space-4);
+            }
+
+            .masthead {
+                grid-template-columns: 1fr;
+            }
+
+            .masthead-side,
+            .status-strip,
+            .badge-strip {
+                justify-content: flex-start;
+            }
+
+            .mapping-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <header class="masthead">
+            <div>
+                <div class="kicker">VRM Animation Lab</div>
+                <h1>FBX to VRMA Workbench</h1>
+                <p class="lede">
+                    面向开发联调的静态导出页：读取一个标准 Humanoid FBX，自动识别骨骼，允许局部修正映射，直接在浏览器里生成真正的 <code>.vrma</code> 文件，并保留完整调试日志。
+                </p>
+            </div>
+
+            <div class="masthead-side">
+                <div class="status-strip">
+                    <div class="status-pill">
+                        <span class="status-dot" id="statusDot" data-tone="idle"></span>
+                        <span id="statusText">等待文件</span>
+                    </div>
+                </div>
+
+                <div class="badge-strip">
+                    <div class="badge">纯前端</div>
+                    <div class="badge">标准 Humanoid</div>
+                    <div class="badge">本地自检</div>
+                </div>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="stage-column">
+                <div class="stage-panel">
+                    <div class="stage-toolbar">
+                        <div class="toolbar-main">
+                            <div class="button-row">
+                                <button class="action-button" id="loadFbxButton" type="button">导入 FBX</button>
+                                <button class="ghost-button" id="loadVrmButton" type="button">导入 VRM（可选）</button>
+                                <button class="ghost-button" id="clearButton" type="button" disabled>清空工作台</button>
+                            </div>
+
+                            <div class="meta-row">
+                                <button class="ghost-button" id="sourcePreviewButton" type="button" data-active="true" disabled>源动画预览</button>
+                                <button class="ghost-button" id="vrmPreviewButton" type="button" data-active="false" disabled>角色验证预览</button>
+                            </div>
+                        </div>
+
+                        <div class="toolbar-sub">
+                            <span class="active-hint" id="activeHint">拖入一个标准 Humanoid FBX，或先点按钮选择文件。</span>
+                        </div>
+                    </div>
+
+                    <div class="dropzone" id="dropzone">
+                        <canvas id="viewport"></canvas>
+
+                        <div class="empty-overlay visible" id="emptyOverlay">
+                            <div class="overlay-card">
+                                <h2 class="overlay-title">先把动作拖进来</h2>
+                                <p class="overlay-copy">
+                                    左侧舞台默认预览原始 FBX 动画；如果你再导入一个 VRM，导出的 VRMA 会在同一页里回灌并直接驱动目标角色。
+                                </p>
+                                <div class="overlay-points">
+                                    <span>1. 支持拖入 <code>.fbx</code> 和 <code>.vrm</code></span>
+                                    <span>2. 先自动映射，再按需手动修正</span>
+                                    <span>3. 导出前后都能看到诊断日志</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="loading-overlay" id="loadingOverlay">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+
+                    <div class="stage-footer">
+                        <div class="footer-main">
+                            <div>
+                                <div class="transport-label">Playback</div>
+                            </div>
+
+                            <div class="transport-row">
+                                <button class="transport-button" id="playButton" type="button" disabled>&#9654;</button>
+                                <button class="transport-button" id="restartButton" type="button" disabled>&#8634;</button>
+                                <label class="speed-wrap">
+                                    <span>倍速</span>
+                                    <select id="speedSelect">
+                                        <option value="0.25">0.25x</option>
+                                        <option value="0.5">0.5x</option>
+                                        <option value="1" selected>1x</option>
+                                        <option value="1.5">1.5x</option>
+                                        <option value="2">2x</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="progress-wrap">
+                            <div id="progressTrack">
+                                <div id="progressFill"></div>
+                            </div>
+                            <span id="timeDisplay">0:00 / 0:00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="rail">
+                <div class="rail-scroll">
+                    <section class="rail-section">
+                        <div class="section-head">
+                            <h2>导入概览</h2>
+                            <span>阶段 1</span>
+                        </div>
+                        <div class="summary-grid" id="importSummary"></div>
+                    </section>
+
+                    <section class="rail-section">
+                        <div class="section-head">
+                            <h2>映射状态</h2>
+                            <span>阶段 2</span>
+                        </div>
+                        <div id="mappingSummary"></div>
+                    </section>
+
+                    <section class="rail-section">
+                        <div class="section-head">
+                            <h2>手动修正</h2>
+                            <span>阶段 3</span>
+                        </div>
+                        <div class="mapping-list" id="mappingList"></div>
+                    </section>
+
+                    <section class="rail-section rail-section--export">
+                        <div class="section-head">
+                            <h2>导出与验证</h2>
+                            <span>阶段 4</span>
+                        </div>
+                        <div id="exportSummary"></div>
+                        <div class="action-stack">
+                            <button class="ghost-button" id="verifyButton" type="button" disabled>验证当前导出</button>
+                            <button class="action-button" id="exportButton" type="button" disabled>导出 VRMA</button>
+                        </div>
+                    </section>
+
+                    <section class="rail-section rail-section--debug">
+                        <div class="section-head">
+                            <h2>调试窗口</h2>
+                            <span>阶段 5</span>
+                        </div>
+                        <div class="console-controls">
+                            <div class="console-actions">
+                                <button class="ghost-button" id="copyLogsButton" type="button">复制日志</button>
+                                <button class="ghost-button" id="clearLogsButton" type="button">清空日志</button>
+                            </div>
+
+                            <label class="console-filter">
+                                <input type="checkbox" id="debugFilterErrors">
+                                <span>只看错误</span>
+                            </label>
+                        </div>
+                        <div class="debug-log" id="debugLog"></div>
+                    </section>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <input type="file" id="fbxInput" accept=".fbx" hidden>
+    <input type="file" id="vrmInput" accept=".vrm" hidden>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+        import { VRMAnimationLoaderPlugin, createVRMAnimationClip } from '@pixiv/three-vrm-animation';
+
+        const TRACK_NAME_RE = /^(.+)\.(quaternion|position|scale)$/;
+        const REQUIRED_BONE_IDS = ['hips', 'spine', 'head', 'leftUpperArm', 'leftLowerArm', 'rightUpperArm', 'rightLowerArm', 'leftUpperLeg', 'leftLowerLeg', 'rightUpperLeg', 'rightLowerLeg'];
+        const MIXAMO_PRESET = {
+            Hips: 'hips', Spine: 'spine', Spine1: 'chest', Spine2: 'upperChest', Neck: 'neck', Head: 'head',
+            LeftShoulder: 'leftShoulder', LeftArm: 'leftUpperArm', LeftForeArm: 'leftLowerArm', LeftHand: 'leftHand',
+            RightShoulder: 'rightShoulder', RightArm: 'rightUpperArm', RightForeArm: 'rightLowerArm', RightHand: 'rightHand',
+            LeftUpLeg: 'leftUpperLeg', LeftLeg: 'leftLowerLeg', LeftFoot: 'leftFoot', LeftToeBase: 'leftToes',
+            RightUpLeg: 'rightUpperLeg', RightLeg: 'rightLowerLeg', RightFoot: 'rightFoot', RightToeBase: 'rightToes',
+            LeftHandThumb1: 'leftThumbMetacarpal', LeftHandThumb2: 'leftThumbProximal', LeftHandThumb3: 'leftThumbDistal',
+            LeftHandIndex1: 'leftIndexProximal', LeftHandIndex2: 'leftIndexIntermediate', LeftHandIndex3: 'leftIndexDistal',
+            LeftHandMiddle1: 'leftMiddleProximal', LeftHandMiddle2: 'leftMiddleIntermediate', LeftHandMiddle3: 'leftMiddleDistal',
+            LeftHandRing1: 'leftRingProximal', LeftHandRing2: 'leftRingIntermediate', LeftHandRing3: 'leftRingDistal',
+            LeftHandPinky1: 'leftLittleProximal', LeftHandPinky2: 'leftLittleIntermediate', LeftHandPinky3: 'leftLittleDistal',
+            RightHandThumb1: 'rightThumbMetacarpal', RightHandThumb2: 'rightThumbProximal', RightHandThumb3: 'rightThumbDistal',
+            RightHandIndex1: 'rightIndexProximal', RightHandIndex2: 'rightIndexIntermediate', RightHandIndex3: 'rightIndexDistal',
+            RightHandMiddle1: 'rightMiddleProximal', RightHandMiddle2: 'rightMiddleIntermediate', RightHandMiddle3: 'rightMiddleDistal',
+            RightHandRing1: 'rightRingProximal', RightHandRing2: 'rightRingIntermediate', RightHandRing3: 'rightRingDistal',
+            RightHandPinky1: 'rightLittleProximal', RightHandPinky2: 'rightLittleIntermediate', RightHandPinky3: 'rightLittleDistal',
+        };
+        const UE_PRESET = {
+            pelvis: 'hips', spine_01: 'spine', spine_02: 'chest', spine_03: 'upperChest', neck_01: 'neck', head: 'head',
+            clavicle_l: 'leftShoulder', upperarm_l: 'leftUpperArm', lowerarm_l: 'leftLowerArm', hand_l: 'leftHand',
+            clavicle_r: 'rightShoulder', upperarm_r: 'rightUpperArm', lowerarm_r: 'rightLowerArm', hand_r: 'rightHand',
+            thigh_l: 'leftUpperLeg', calf_l: 'leftLowerLeg', foot_l: 'leftFoot', ball_l: 'leftToes',
+            thigh_r: 'rightUpperLeg', calf_r: 'rightLowerLeg', foot_r: 'rightFoot', ball_r: 'rightToes',
+        };
+        const PRESETS = [{ id: 'mixamo', map: MIXAMO_PRESET }, { id: 'ue', map: UE_PRESET }];
+
+        function normalizeKey(value) { return String(value).trim().toLowerCase().replace(/\s+/g, ''); }
+        function roundNumber(value, digits = 6) { const rounded = Number(value.toFixed(digits)); return Math.abs(rounded) < 1e-6 ? 0 : rounded; }
+        function normalizeQuat([x, y, z, w]) { const length = Math.hypot(x, y, z, w) || 1; return [x / length, y / length, z / length, w / length]; }
+        function invertQuat([x, y, z, w]) { const lengthSquared = x * x + y * y + z * z + w * w || 1; return [-x / lengthSquared, -y / lengthSquared, -z / lengthSquared, w / lengthSquared]; }
+        function multiplyQuat([ax, ay, az, aw], [bx, by, bz, bw]) {
+            return [
+                aw * bx + ax * bw + ay * bz - az * by,
+                aw * by - ax * bz + ay * bw + az * bx,
+                aw * bz + ax * by - ay * bx + az * bw,
+                aw * bw - ax * bx - ay * by - az * bz,
+            ];
+        }
+        function subtractVec3(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+        function toNormalizedLocalRotation(sampleRotation, restPose) {
+            const sample = normalizeQuat(sampleRotation);
+            const localRestRotation = normalizeQuat(restPose.rotation);
+            const worldRestRotation = restPose.worldRotation ? normalizeQuat(restPose.worldRotation) : null;
+            if (!worldRestRotation) return normalizeQuat(multiplyQuat(invertQuat(localRestRotation), sample));
+            return normalizeQuat(
+                multiplyQuat(
+                    multiplyQuat(
+                        multiplyQuat(worldRestRotation, invertQuat(localRestRotation)),
+                        sample,
+                    ),
+                    invertQuat(worldRestRotation),
+                ),
+            );
+        }
+        function chunkValues(values, size) { const result = []; for (let i = 0; i < values.length; i += size) result.push(values.slice(i, i + size)); return result; }
+        function encodeBase64(uint8Array) { let binary = ''; uint8Array.forEach((value) => { binary += String.fromCharCode(value); }); return btoa(binary); }
+        function concatUint8Arrays(chunks) {
+            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+            const result = new Uint8Array(totalLength);
+            let offset = 0;
+            chunks.forEach((chunk) => { result.set(chunk, offset); offset += chunk.byteLength; });
+            return result;
+        }
+        function createFloat32Chunk(values) { const floatArray = new Float32Array(values); return new Uint8Array(floatArray.buffer.slice(0)); }
+        function normalizeSourceBoneName(name) {
+            return String(name).split('|').pop().replace(/^mixamorig[:_]?/i, '').replace(/^def[_:]/i, '').replace(/^bip0?1[\s:_-]*/i, '').replace(/^bone[:_\s-]*/i, '').trim();
+        }
+        function parseTrackBinding(trackName) {
+            const match = String(trackName).match(TRACK_NAME_RE);
+            if (!match) return null;
+            return { sourceBoneName: normalizeSourceBoneName(match[1]), property: match[2] === 'quaternion' ? 'rotation' : match[2] };
+        }
+        function inferHumanoidMap(sourceBoneNames) {
+            const normalizedNames = [...new Set(sourceBoneNames.map((name) => normalizeSourceBoneName(name)).filter(Boolean))];
+            let bestPreset = null;
+            let bestMatches = {};
+            PRESETS.forEach((preset) => {
+                const matches = {};
+                normalizedNames.forEach((name) => {
+                    const boneId = preset.map[name] ?? preset.map[normalizeKey(name)];
+                    if (boneId) matches[name] = { boneId, source: 'preset', preset: preset.id };
+                });
+                if (Object.keys(matches).length > Object.keys(bestMatches).length) { bestPreset = preset.id; bestMatches = matches; }
+            });
+            return { preset: bestPreset, mapping: bestMatches, normalizedNames };
+        }
+        function validateHumanoidMap(humanoidMap) {
+            const counts = new Map();
+            Object.values(humanoidMap || {}).forEach((entry) => {
+                const boneId = entry?.boneId;
+                if (!boneId) return;
+                counts.set(boneId, (counts.get(boneId) || 0) + 1);
+            });
+            const mappedBoneIds = new Set(counts.keys());
+            const duplicateBoneIds = [...counts.entries()].filter(([, count]) => count > 1).map(([boneId]) => boneId);
+            const missingRequired = REQUIRED_BONE_IDS.filter((boneId) => !mappedBoneIds.has(boneId));
+            return { isValid: missingRequired.length === 0 && duplicateBoneIds.length === 0, missingRequired, duplicateBoneIds, mappedBoneIds: [...mappedBoneIds] };
+        }
+function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPose = {}, unitScale = 1 }) {
+            const animationTracks = [];
+            sourceTracks.forEach((track) => {
+                const binding = parseTrackBinding(track.name);
+                if (!binding) return;
+                const target = humanoidMap[binding.sourceBoneName];
+                const rest = restPose[binding.sourceBoneName];
+                if (!target || !rest) return;
+                if (binding.property === 'position' && target.boneId === 'hips') {
+                    const deltas = chunkValues(track.values, 3).map((value) => value.map((component) => component * unitScale)).flat().map((value) => roundNumber(value));
+                    animationTracks.push({ boneId: target.boneId, path: 'position', times: [...track.times], values: deltas, valueType: 'VEC3' });
+                }
+                if (binding.property === 'rotation') {
+                    const deltas = chunkValues(track.values, 4).map((value) => toNormalizedLocalRotation(value, rest)).flat().map((value) => roundNumber(value));
+                    animationTracks.push({ boneId: target.boneId, path: 'rotation', times: [...track.times], values: deltas, valueType: 'VEC4' });
+                }
+            });
+            return animationTracks;
+        }
+        function buildVrmaDocument({ generator = 'FBX to VRMA Workbench', humanoidNodes = [], animationTracks = [] }) {
+            const nodes = [{ name: 'Root' }];
+            const humanBones = {};
+            humanoidNodes.forEach((node, index) => {
+                const nodeIndex = index + 1;
+                const jsonNode = { name: node.name || node.boneId };
+                if (node.translation) jsonNode.translation = node.translation.map((value) => roundNumber(value));
+                if (node.rotation) jsonNode.rotation = node.rotation.map((value) => roundNumber(value));
+                nodes.push(jsonNode);
+                humanBones[node.boneId] = { node: nodeIndex };
+            });
+            const nodeIndexByBoneId = Object.fromEntries(humanoidNodes.map((node, index) => [node.boneId, index + 1]));
+            const rootChildren = [];
+            humanoidNodes.forEach((node) => {
+                const nodeIndex = nodeIndexByBoneId[node.boneId];
+                const childIndices = (node.childrenBoneIds || []).map((boneId) => nodeIndexByBoneId[boneId]).filter((childIndex) => Number.isInteger(childIndex));
+                if (childIndices.length) nodes[nodeIndex].children = childIndices;
+                if (!node.parentBoneId || !nodeIndexByBoneId[node.parentBoneId]) rootChildren.push(nodeIndex);
+            });
+            if (rootChildren.length) nodes[0].children = rootChildren;
+            const rawChunks = [];
+            const bufferViews = [];
+            const accessors = [];
+            const samplers = [];
+            const channels = [];
+            animationTracks.forEach((track) => {
+                const inputChunk = createFloat32Chunk(track.times);
+                const inputOffset = rawChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+                rawChunks.push(inputChunk);
+                bufferViews.push({ buffer: 0, byteOffset: inputOffset, byteLength: inputChunk.byteLength });
+                accessors.push({ bufferView: bufferViews.length - 1, componentType: 5126, count: track.times.length, type: 'SCALAR', min: [Math.min(...track.times)], max: [Math.max(...track.times)] });
+                const inputAccessorIndex = accessors.length - 1;
+                const outputChunk = createFloat32Chunk(track.values);
+                const outputOffset = rawChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+                rawChunks.push(outputChunk);
+                bufferViews.push({ buffer: 0, byteOffset: outputOffset, byteLength: outputChunk.byteLength });
+                accessors.push({ bufferView: bufferViews.length - 1, componentType: 5126, count: track.times.length, type: track.valueType });
+                const outputAccessorIndex = accessors.length - 1;
+                samplers.push({ input: inputAccessorIndex, output: outputAccessorIndex, interpolation: 'LINEAR' });
+                channels.push({ sampler: samplers.length - 1, target: { node: nodeIndexByBoneId[track.boneId], path: track.path === 'position' ? 'translation' : track.path } });
+            });
+            const binaryBuffer = concatUint8Arrays(rawChunks);
+            const base64 = encodeBase64(binaryBuffer);
+            const json = {
+                asset: { version: '2.0', generator },
+                scene: 0,
+                scenes: [{ nodes: [0], name: 'Scene' }],
+                nodes,
+                animations: [{ channels, samplers }],
+                accessors,
+                bufferViews,
+                buffers: [{ byteLength: binaryBuffer.byteLength, uri: `data:application/octet-stream;base64,${base64}` }],
+                extensionsUsed: ['VRMC_vrm_animation'],
+                extensions: { VRMC_vrm_animation: { specVersion: '1.0', humanoid: { humanBones } } },
+            };
+            return { json, text: `${JSON.stringify(json, null, 2)}\n`, bytes: binaryBuffer, stats: { nodeCount: humanoidNodes.length, channelCount: channels.length, duration: animationTracks.reduce((max, track) => Math.max(max, track.times.at(-1) ?? 0), 0) } };
+        }
+        function getSupportedBoneIds() {
+            const ids = new Set([...REQUIRED_BONE_IDS, ...Object.values(MIXAMO_PRESET), ...Object.values(UE_PRESET)]);
+            return [...ids].sort();
+        }
+
+        const dom = {
+            canvas: document.getElementById('viewport'),
+            dropzone: document.getElementById('dropzone'),
+            emptyOverlay: document.getElementById('emptyOverlay'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            statusDot: document.getElementById('statusDot'),
+            statusText: document.getElementById('statusText'),
+            activeHint: document.getElementById('activeHint'),
+            fbxInput: document.getElementById('fbxInput'),
+            vrmInput: document.getElementById('vrmInput'),
+            loadFbxButton: document.getElementById('loadFbxButton'),
+            loadVrmButton: document.getElementById('loadVrmButton'),
+            clearButton: document.getElementById('clearButton'),
+            sourcePreviewButton: document.getElementById('sourcePreviewButton'),
+            vrmPreviewButton: document.getElementById('vrmPreviewButton'),
+            playButton: document.getElementById('playButton'),
+            restartButton: document.getElementById('restartButton'),
+            speedSelect: document.getElementById('speedSelect'),
+            progressTrack: document.getElementById('progressTrack'),
+            progressFill: document.getElementById('progressFill'),
+            timeDisplay: document.getElementById('timeDisplay'),
+            importSummary: document.getElementById('importSummary'),
+            mappingSummary: document.getElementById('mappingSummary'),
+            mappingList: document.getElementById('mappingList'),
+            exportSummary: document.getElementById('exportSummary'),
+            verifyButton: document.getElementById('verifyButton'),
+            exportButton: document.getElementById('exportButton'),
+            clearLogsButton: document.getElementById('clearLogsButton'),
+            copyLogsButton: document.getElementById('copyLogsButton'),
+            debugFilterErrors: document.getElementById('debugFilterErrors'),
+            debugLog: document.getElementById('debugLog'),
+            toast: document.getElementById('toast'),
+        };
+
+        const REQUIRED_BONES = new Set(REQUIRED_BONE_IDS);
+        const SUPPORTED_BONES = getSupportedBoneIds();
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#100f0d');
+        const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+        camera.position.set(0, 1.35, 4.6);
+        const renderer = new THREE.WebGLRenderer({ canvas: dom.canvas, antialias: true });
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        const controls = new OrbitControls(camera, dom.canvas);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.target.set(0, 1.1, 0);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+        keyLight.position.set(1.2, 2.8, 1.6);
+        scene.add(keyLight);
+        scene.add(new THREE.HemisphereLight(0xfff1d9, 0x202632, 0.55));
+        const grid = new THREE.GridHelper(10, 20, 0x6a5632, 0x2c241a);
+        grid.material.opacity = 0.5;
+        grid.material.transparent = true;
+        scene.add(grid);
+        const clock = new THREE.Clock();
+        const fbxLoader = new FBXLoader();
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.register((parser) => new VRMLoaderPlugin(parser));
+        const vrmaLoader = new GLTFLoader();
+        vrmaLoader.register((parser) => new VRMAnimationLoaderPlugin(parser));
+        const state = {
+            sourceFile: null, sourceRoot: null, sourceClip: null, sourceTracks: [], sourceBoneNames: [], restPose: {}, sourceUnitScale: 1, detectedPreset: null, humanoidMap: {},
+            currentVRM: null, currentVRMGroup: null, exportArtifact: null, mixer: null, currentAction: null, clipDuration: 0, isPlaying: false, previewMode: 'source',
+            loading: false, logs: [], showErrorOnly: false,
+        };
+
+        function setStatus(text, tone = 'idle') { dom.statusText.textContent = text; dom.statusDot.dataset.tone = tone; }
+        function setHint(text) { dom.activeHint.textContent = text; }
+        function setLoading(loading) { state.loading = loading; dom.loadingOverlay.classList.toggle('visible', loading); }
+        function showToast(message, tone = 'error') {
+            dom.toast.textContent = message;
+            dom.toast.dataset.tone = tone;
+            dom.toast.classList.add('show');
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => dom.toast.classList.remove('show'), 2600);
+        }
+        function logDebug(level, stage, summary, details = '', error = null) {
+            const entry = {
+                id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+                timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                level, stage, summary,
+                details: details || (error ? error.message : ''),
+                raw: error ? String(error.stack || error.message || error) : '',
+            };
+            state.logs.unshift(entry);
+            renderDebugConsole();
+        }
+        function formatNumber(value, digits = 2) { return Number.isFinite(value) ? Number(value).toFixed(digits) : '--'; }
+        function formatFileSize(bytes) {
+            if (!Number.isFinite(bytes)) return '--';
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
+        function formatTime(seconds) { const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0; const minutes = Math.floor(safe / 60); const remain = Math.floor(safe % 60); return `${minutes}:${String(remain).padStart(2, '0')}`; }
+        function roundVec(values) { return values.map((value) => Number(value.toFixed(6))); }
+        function createFileName(name, ext) { const stem = (name || 'motion').replace(/\.[^.]+$/, ''); return `${stem}${ext}`; }
+        function inferSourceUnitScale(restPose) {
+            const hipsHeight = Math.abs(restPose?.Hips?.position?.[1] ?? 0);
+            return hipsHeight > 10 ? 0.01 : 1;
+        }
+        function disposeObject(root) {
+            if (!root) return;
+            root.traverse((child) => {
+                child.geometry?.dispose?.();
+                if (child.material) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach((material) => {
+                        Object.values(material).forEach((value) => { if (value && typeof value === 'object' && typeof value.dispose === 'function') value.dispose(); });
+                        material.dispose?.();
+                    });
+                }
+            });
+        }
+        function frameObject(object) {
+            if (!object) return;
+            const box = new THREE.Box3().setFromObject(object);
+            if (box.isEmpty()) {
+                controls.target.set(0, 1, 0);
+                camera.position.set(0, 1.35, 4.6);
+                controls.update();
+                return;
+            }
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const radius = Math.max(size.x, size.y, size.z) * 0.7 || 1;
+            controls.target.set(center.x, center.y * 0.85, center.z);
+            camera.position.set(center.x + radius * 1.2, center.y + radius * 0.6, center.z + radius * 2.3);
+            controls.update();
+        }
+        function extractSourceTracks(clip) {
+            return clip.tracks.map((track) => {
+                const binding = parseTrackBinding(track.name);
+                if (!binding) return null;
+                if (binding.property !== 'rotation' && binding.property !== 'position') return null;
+                return { name: track.name, sourceBoneName: binding.sourceBoneName, property: binding.property, times: Array.from(track.times), values: Array.from(track.values) };
+            }).filter(Boolean);
+        }
+        function captureRestPose(root) {
+            const restPose = {};
+            const worldQuaternion = new THREE.Quaternion();
+            root.updateMatrixWorld(true);
+            root.traverse((node) => {
+                if (!node.name) return;
+                const boneName = parseTrackBinding(`${node.name}.position`)?.sourceBoneName;
+                if (!boneName || restPose[boneName]) return;
+                restPose[boneName] = {
+                    sourceName: node.name,
+                    parentSourceBoneName: parseTrackBinding(`${node.parent?.name || ''}.position`)?.sourceBoneName ?? null,
+                    position: roundVec(node.position.toArray()),
+                    rotation: roundVec(node.quaternion.toArray()),
+                    worldRotation: roundVec(node.getWorldQuaternion(worldQuaternion).toArray()),
+                };
+            });
+            return restPose;
+        }
+        function collectSourceBoneNames(restPose, sourceTracks) {
+            const names = new Set(Object.keys(restPose));
+            sourceTracks.forEach((track) => names.add(track.sourceBoneName));
+            return [...names].sort((a, b) => a.localeCompare(b));
+        }
+        function clearSourceData() {
+            if (state.sourceRoot) { scene.remove(state.sourceRoot); disposeObject(state.sourceRoot); }
+            state.sourceFile = null; state.sourceRoot = null; state.sourceClip = null; state.sourceTracks = []; state.sourceBoneNames = []; state.restPose = {}; state.sourceUnitScale = 1; state.detectedPreset = null; state.humanoidMap = {}; state.exportArtifact = null;
+        }
+        function clearVRMData() {
+            if (state.currentVRMGroup) { scene.remove(state.currentVRMGroup); disposeObject(state.currentVRMGroup); }
+            state.currentVRM = null; state.currentVRMGroup = null; state.exportArtifact = null;
+        }
+        function clearPlayback() {
+            if (state.mixer) state.mixer.stopAllAction();
+            state.mixer = null; state.currentAction = null; state.clipDuration = 0; state.isPlaying = false;
+        }
+        function setPreviewMode(mode) {
+            state.previewMode = mode;
+            if (state.sourceRoot) state.sourceRoot.visible = mode === 'source';
+            if (state.currentVRMGroup) state.currentVRMGroup.visible = mode === 'vrm';
+            dom.sourcePreviewButton.dataset.active = String(mode === 'source');
+            dom.vrmPreviewButton.dataset.active = String(mode === 'vrm');
+        }
+        function playSourcePreview() {
+            if (!state.sourceRoot || !state.sourceClip) return;
+            clearPlayback();
+            setPreviewMode('source');
+            state.mixer = new THREE.AnimationMixer(state.sourceRoot);
+            state.currentAction = state.mixer.clipAction(state.sourceClip);
+            state.currentAction.play();
+            state.currentAction.setLoop(THREE.LoopRepeat);
+            state.mixer.timeScale = Number(dom.speedSelect.value);
+            state.clipDuration = state.sourceClip.duration || 0;
+            state.isPlaying = true;
+            setStatus('正在预览 FBX 原始动画', 'ready');
+            setHint('当前是源 FBX 预览。加载 VRM 后可以切换到角色验证模式。');
+            updatePlaybackUi();
+        }
+        function playVRMPreview(vrmAnimation) {
+            if (!state.currentVRM || !state.currentVRMGroup || !vrmAnimation) return;
+            clearPlayback();
+            setPreviewMode('vrm');
+            const clip = createVRMAnimationClip(vrmAnimation, state.currentVRM);
+            state.mixer = new THREE.AnimationMixer(state.currentVRMGroup);
+            state.currentAction = state.mixer.clipAction(clip);
+            state.currentAction.play();
+            state.currentAction.setLoop(THREE.LoopRepeat);
+            state.mixer.timeScale = Number(dom.speedSelect.value);
+            state.clipDuration = clip.duration || 0;
+            state.isPlaying = true;
+            setStatus('正在预览导出的 VRMA', 'ready');
+            setHint('当前是 VRM 验证预览，说明导出的 VRMA 已被本地重新解析。');
+            updatePlaybackUi();
+        }
+        function updatePlaybackUi() {
+            dom.playButton.disabled = !state.currentAction;
+            dom.restartButton.disabled = !state.currentAction;
+            dom.playButton.innerHTML = state.isPlaying ? '&#10074;&#10074;' : '&#9654;';
+            const currentTime = state.currentAction ? state.currentAction.time : 0;
+            const progress = state.clipDuration > 0 ? Math.min(currentTime / state.clipDuration, 1) : 0;
+            dom.progressFill.style.width = `${progress * 100}%`;
+            dom.timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(state.clipDuration)}`;
+        }
+        function updateActionButtons() {
+            const validation = validateHumanoidMap(state.humanoidMap);
+            const hasSource = Boolean(state.sourceClip);
+            const hasVRM = Boolean(state.currentVRM);
+            const hasTracks = state.sourceTracks.length > 0;
+            dom.clearButton.disabled = !hasSource && !hasVRM;
+            dom.sourcePreviewButton.disabled = !hasSource;
+            dom.vrmPreviewButton.disabled = !hasSource || !hasVRM || !validation.isValid;
+            dom.verifyButton.disabled = !hasSource || !hasVRM || !validation.isValid || !hasTracks;
+            dom.exportButton.disabled = !hasSource || !validation.isValid || !hasTracks;
+            dom.emptyOverlay.classList.toggle('visible', !hasSource && !hasVRM);
+        }
+        function renderImportSummary() {
+            const items = [];
+            if (state.sourceFile) {
+                items.push(`<article class="summary-card"><span class="summary-label">FBX</span><strong>${state.sourceFile.name}</strong><span>${formatFileSize(state.sourceFile.size)} · ${state.sourceTracks.length} 条可用轨道</span></article>`);
+            } else {
+                items.push(`<article class="summary-card empty"><span class="summary-label">FBX</span><strong>尚未导入</strong><span>支持标准 Humanoid 动画，优先 Mixamo / UE 命名。</span></article>`);
+            }
+            if (state.currentVRM) {
+                items.push(`<article class="summary-card"><span class="summary-label">VRM</span><strong>${state.currentVRM.meta?.name || '已载入模型'}</strong><span>可用于导出前本地验证</span></article>`);
+            } else {
+                items.push(`<article class="summary-card empty"><span class="summary-label">VRM</span><strong>可选</strong><span>导入后可以直接预览导出的 VRMA 套用效果。</span></article>`);
+            }
+            if (state.detectedPreset) {
+                items.push(`<article class="summary-card accent"><span class="summary-label">识别预设</span><strong>${state.detectedPreset === 'mixamo' ? 'Mixamo' : 'UE Humanoid'}</strong><span>自动映射已写入下方编辑器，可继续手动修正。</span></article>`);
+            }
+            dom.importSummary.innerHTML = items.join('');
+        }
+        function renderMappingSummary() {
+            const validation = validateHumanoidMap(state.humanoidMap);
+            const mappedCount = validation.mappedBoneIds.length;
+            dom.mappingSummary.innerHTML = `
+                <div class="summary-grid compact">
+                    <article class="summary-card"><span class="summary-label">源骨骼</span><strong>${state.sourceBoneNames.length || 0}</strong><span>检测到的可映射名称</span></article>
+                    <article class="summary-card"><span class="summary-label">已映射</span><strong>${mappedCount}</strong><span>可导出目标骨骼数</span></article>
+                </div>
+                <div class="inline-pills">
+                    ${validation.missingRequired.length ? `<span class="pill error">缺关键骨 ${validation.missingRequired.length}</span>` : `<span class="pill success">关键骨齐全</span>`}
+                    ${validation.duplicateBoneIds.length ? `<span class="pill error">重复目标 ${validation.duplicateBoneIds.length}</span>` : `<span class="pill neutral">无重复映射</span>`}
+                </div>
+            `;
+        }
+        function renderMappingList() {
+            if (!state.sourceBoneNames.length) {
+                dom.mappingList.innerHTML = `<div class="empty-block">导入 FBX 后，这里会列出检测到的骨骼和自动映射结果。</div>`;
+                return;
+            }
+            const validation = validateHumanoidMap(state.humanoidMap);
+            const duplicateSet = new Set(validation.duplicateBoneIds);
+            dom.mappingList.innerHTML = state.sourceBoneNames.map((sourceBoneName) => {
+                const current = state.humanoidMap[sourceBoneName]?.boneId || '';
+                const source = state.humanoidMap[sourceBoneName]?.source || 'manual';
+                const isRequired = current && REQUIRED_BONES.has(current);
+                const isDuplicate = current && duplicateSet.has(current);
+                const options = [`<option value="">未映射</option>`].concat(SUPPORTED_BONES.map((boneId) => `<option value="${boneId}"${boneId === current ? ' selected' : ''}>${boneId}</option>`)).join('');
+                return `
+                    <label class="mapping-row ${current ? 'mapped' : 'unmapped'} ${isDuplicate ? 'duplicate' : ''}">
+                        <span class="mapping-meta">
+                            <strong>${sourceBoneName}</strong>
+                            <span>${source === 'preset' ? '自动识别' : '手动修正'}${isRequired ? ' · 关键骨' : ''}${isDuplicate ? ' · 重复目标' : ''}</span>
+                        </span>
+                        <select data-source-bone="${sourceBoneName}">${options}</select>
+                    </label>
+                `;
+            }).join('');
+        }
+        function renderExportSummary() {
+            const validation = validateHumanoidMap(state.humanoidMap);
+            const artifact = state.exportArtifact;
+            const lines = [];
+            if (!state.sourceClip) {
+                lines.push('<div class="empty-block">先导入一个 FBX 动画文件，导出信息会显示在这里。</div>');
+            } else {
+                lines.push(`<article class="summary-card"><span class="summary-label">可导出状态</span><strong>${validation.isValid ? '可以导出' : '待修正'}</strong><span>${validation.isValid ? '关键骨完整且无重复映射。' : '请先补齐关键骨并消除重复映射。'}</span></article>`);
+            }
+            if (artifact?.stats) {
+                lines.push(`<article class="summary-card accent"><span class="summary-label">最近一次构建</span><strong>${artifact.fileName || createFileName(state.sourceFile?.name, '.vrma')}</strong><span>${artifact.stats.channelCount} 条动画通道 · ${formatNumber(artifact.stats.duration, 2)}s</span></article>`);
+            }
+            if (artifact?.verify) {
+                lines.push(`<article class="summary-card ${artifact.verify.ok ? '' : 'error'}"><span class="summary-label">自检结果</span><strong>${artifact.verify.ok ? '本地重载通过' : '本地重载失败'}</strong><span>${artifact.verify.ok ? `${artifact.verify.humanoidBoneCount} 个 Humanoid 轨道 · ${formatNumber(artifact.verify.duration, 2)}s` : artifact.verify.message}</span></article>`);
+            }
+            dom.exportSummary.innerHTML = lines.join('');
+        }
+        function renderDebugConsole() {
+            const entries = state.showErrorOnly ? state.logs.filter((entry) => entry.level === 'error') : state.logs;
+            if (!entries.length) {
+                dom.debugLog.innerHTML = `<div class="empty-block">这里会保留导入、映射、导出和自检过程中的调试信息，方便我们后续一起排查问题。</div>`;
+                return;
+            }
+            dom.debugLog.innerHTML = entries.map((entry) => `
+                <article class="log-entry" data-level="${entry.level}">
+                    <div class="log-head"><span class="log-pill">${entry.level}</span><strong>${entry.stage}</strong><time>${entry.timestamp}</time></div>
+                    <p>${entry.summary}</p>
+                    ${entry.details ? `<pre>${entry.details}</pre>` : ''}
+                    ${entry.raw ? `<details><summary>原始异常</summary><pre>${entry.raw}</pre></details>` : ''}
+                </article>
+            `).join('');
+        }
+        function renderAll() { renderImportSummary(); renderMappingSummary(); renderMappingList(); renderExportSummary(); renderDebugConsole(); updateActionButtons(); updatePlaybackUi(); }
+        function buildHumanoidNodes() {
+            const sourceNodes = Object.entries(state.humanoidMap).filter(([, entry]) => entry?.boneId).map(([sourceBoneName, entry]) => {
+                const pose = state.restPose[sourceBoneName];
+                return {
+                    sourceBoneName,
+                    boneId: entry.boneId,
+                    name: pose?.sourceName || entry.boneId,
+                    translation: (pose?.position || [0, 0, 0]).map((value) => Number((value * state.sourceUnitScale).toFixed(6))),
+                    parentSourceBoneName: pose?.parentSourceBoneName || null,
+                };
+            });
+            const nodeBySourceBoneName = new Map(sourceNodes.map((node) => [node.sourceBoneName, node]));
+            const rootNodes = [];
+            sourceNodes.forEach((node) => {
+                let parentSourceBoneName = node.parentSourceBoneName;
+                while (parentSourceBoneName && !nodeBySourceBoneName.has(parentSourceBoneName)) {
+                    parentSourceBoneName = state.restPose[parentSourceBoneName]?.parentSourceBoneName || null;
+                }
+                if (parentSourceBoneName) {
+                    const parentNode = nodeBySourceBoneName.get(parentSourceBoneName);
+                    parentNode.childrenBoneIds = [...(parentNode.childrenBoneIds || []), node.boneId];
+                    node.parentBoneId = parentNode.boneId;
+                } else {
+                    rootNodes.push(node);
+                }
+            });
+            const ordered = [];
+            const walk = (node) => {
+                ordered.push(node);
+                (node.childrenBoneIds || []).map((boneId) => sourceNodes.find((candidate) => candidate.boneId === boneId)).filter(Boolean).forEach(walk);
+            };
+            rootNodes.forEach(walk);
+            return ordered.map(({ sourceBoneName, parentSourceBoneName, ...node }) => node);
+        }
+        function buildCurrentArtifact() {
+            const validation = validateHumanoidMap(state.humanoidMap);
+            if (!state.sourceClip) throw new Error('还没有加载 FBX 动画');
+            if (!validation.isValid) throw new Error(validation.missingRequired.length ? `缺少关键骨：${validation.missingRequired.join(', ')}` : `存在重复目标：${validation.duplicateBoneIds.join(', ')}`);
+            const animationTracks = buildVrmaAnimationTracks({ sourceTracks: state.sourceTracks, humanoidMap: state.humanoidMap, restPose: state.restPose, unitScale: state.sourceUnitScale });
+            if (!animationTracks.length) throw new Error('当前映射没有生成任何合法动画轨道');
+            const artifact = buildVrmaDocument({ generator: 'FBX to VRMA Workbench', humanoidNodes: buildHumanoidNodes(), animationTracks });
+            artifact.fileName = createFileName(state.sourceFile?.name, '.vrma');
+            artifact.fileSize = artifact.text.length;
+            state.exportArtifact = artifact;
+            return artifact;
+        }
+        async function verifyArtifact(activatePreview = false) {
+            const artifact = buildCurrentArtifact();
+            const blob = new Blob([artifact.text], { type: 'model/gltf+json' });
+            const url = URL.createObjectURL(blob);
+            logDebug('info', 'self-verify', '开始回灌刚生成的 VRMA', artifact.fileName);
+            setLoading(true);
+            try {
+                const gltf = await vrmaLoader.loadAsync(url);
+                const vrmAnimation = gltf.userData?.vrmAnimations?.[0];
+                if (!vrmAnimation) throw new Error('文件已生成，但没有解析出 VRMAnimation');
+                const rotationCount = vrmAnimation.humanoidTracks.rotation.size;
+                const translationCount = vrmAnimation.humanoidTracks.translation.size;
+                artifact.verify = { ok: true, duration: vrmAnimation.duration, humanoidBoneCount: rotationCount + translationCount };
+                state.exportArtifact = artifact;
+                logDebug('info', 'self-verify', 'VRMA 本地重载成功', `${artifact.verify.humanoidBoneCount} 条 Humanoid 轨道 · ${formatNumber(vrmAnimation.duration, 2)}s`);
+                if (activatePreview && state.currentVRM) { playVRMPreview(vrmAnimation); frameObject(state.currentVRMGroup); }
+                renderExportSummary();
+                return artifact;
+            } catch (error) {
+                artifact.verify = { ok: false, message: error.message };
+                state.exportArtifact = artifact;
+                logDebug('error', 'self-verify', 'VRMA 本地重载失败', error.message, error);
+                renderExportSummary();
+                throw error;
+            } finally {
+                URL.revokeObjectURL(url);
+                setLoading(false);
+            }
+        }
+        async function handleVerifyClick() {
+            try { const artifact = await verifyArtifact(true); showToast(`验证通过：${artifact.fileName}`, 'success'); }
+            catch (error) { showToast(`验证失败：${error.message}`, 'error'); }
+        }
+        async function handleExportClick() {
+            try {
+                const artifact = await verifyArtifact(false);
+                const blob = new Blob([artifact.text], { type: 'model/gltf+json' });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = artifact.fileName;
+                anchor.click();
+                URL.revokeObjectURL(url);
+                logDebug('info', 'download', 'VRMA 下载已触发', artifact.fileName);
+                showToast(`已下载 ${artifact.fileName}`, 'success');
+            } catch (error) {
+                logDebug('error', 'download', 'VRMA 下载前校验失败', error.message, error);
+                showToast(`导出失败：${error.message}`, 'error');
+            }
+        }
+        async function loadFBX(file) {
+            logDebug('info', 'load-fbx', '开始读取 FBX', `${file.name} · ${formatFileSize(file.size)}`);
+            setLoading(true);
+            setStatus('正在加载 FBX...', 'loading');
+            const url = URL.createObjectURL(file);
+            try {
+                clearSourceData();
+                clearPlayback();
+                const fbx = await fbxLoader.loadAsync(url);
+                if (!fbx.animations?.length) throw new Error('FBX 中没有找到动画数据');
+                state.sourceFile = file;
+                state.sourceRoot = fbx;
+                state.sourceClip = fbx.animations[0];
+                state.sourceTracks = extractSourceTracks(state.sourceClip);
+                state.restPose = captureRestPose(fbx);
+                state.sourceUnitScale = inferSourceUnitScale(state.restPose);
+                state.sourceBoneNames = collectSourceBoneNames(state.restPose, state.sourceTracks);
+                const inferred = inferHumanoidMap(state.sourceBoneNames);
+                state.detectedPreset = inferred.preset;
+                state.humanoidMap = inferred.mapping;
+                scene.add(fbx);
+                setPreviewMode('source');
+                frameObject(fbx);
+                playSourcePreview();
+                setStatus('FBX 已载入', 'ready');
+                setHint('自动映射已完成。先检查右侧关键骨状态，再决定是否手动修正。');
+                logDebug('info', 'map-bones', '完成自动骨骼识别', `${state.sourceBoneNames.length} 个源骨骼 · 预设 ${state.detectedPreset || '未命中'} · 单位缩放 ${state.sourceUnitScale}`);
+            } catch (error) {
+                setStatus('FBX 加载失败', 'error');
+                setHint('请检查 FBX 是否包含标准 Humanoid 动画。');
+                logDebug('error', 'load-fbx', 'FBX 解析失败', error.message, error);
+                showToast(`FBX 加载失败：${error.message}`, 'error');
+            } finally {
+                URL.revokeObjectURL(url);
+                setLoading(false);
+                renderAll();
+            }
+        }
+        async function loadVRM(file) {
+            logDebug('info', 'load-vrm', '开始读取 VRM', file.name);
+            setLoading(true);
+            setStatus('正在加载 VRM...', 'loading');
+            const url = URL.createObjectURL(file);
+            try {
+                clearVRMData();
+                const gltf = await gltfLoader.loadAsync(url);
+                const vrm = gltf.userData?.vrm;
+                if (!vrm) throw new Error('文件不是有效的 VRM');
+                VRMUtils.removeUnnecessaryVertices(gltf.scene);
+                VRMUtils.removeUnnecessaryJoints(gltf.scene);
+                state.currentVRM = vrm;
+                state.currentVRMGroup = vrm.scene;
+                state.currentVRMGroup.visible = state.previewMode === 'vrm';
+                scene.add(state.currentVRMGroup);
+                if (state.previewMode === 'vrm') frameObject(state.currentVRMGroup);
+                setStatus('VRM 已载入', 'ready');
+                setHint('现在可以点击“验证当前导出”，直接在角色上回灌预览生成的 VRMA。');
+                logDebug('info', 'load-vrm', 'VRM 载入完成', vrm.meta?.name || file.name);
+            } catch (error) {
+                setStatus('VRM 加载失败', 'error');
+                logDebug('error', 'load-vrm', 'VRM 解析失败', error.message, error);
+                showToast(`VRM 加载失败：${error.message}`, 'error');
+            } finally {
+                URL.revokeObjectURL(url);
+                setLoading(false);
+                renderAll();
+            }
+        }
+        function handleMappingChange(event) {
+            const select = event.target.closest('select[data-source-bone]');
+            if (!select) return;
+            const sourceBoneName = select.dataset.sourceBone;
+            const boneId = select.value;
+            if (!boneId) {
+                delete state.humanoidMap[sourceBoneName];
+                logDebug('warning', 'map-bones', `已取消映射 ${sourceBoneName}`);
+            } else {
+                const previousSource = state.humanoidMap[sourceBoneName]?.source === 'preset' ? 'preset' : 'manual';
+                state.humanoidMap[sourceBoneName] = { boneId, source: previousSource === 'preset' ? 'preset' : 'manual' };
+                logDebug('info', 'map-bones', `映射更新 ${sourceBoneName} -> ${boneId}`);
+            }
+            state.exportArtifact = null;
+            renderAll();
+        }
+        function togglePlay() {
+            if (!state.currentAction) return;
+            state.currentAction.paused = !state.currentAction.paused;
+            state.isPlaying = !state.currentAction.paused;
+            updatePlaybackUi();
+        }
+        function restartPlayback() {
+            if (!state.currentAction) return;
+            state.currentAction.reset();
+            state.currentAction.play();
+            state.currentAction.paused = false;
+            state.isPlaying = true;
+            updatePlaybackUi();
+        }
+        function seekPlayback(clientX) {
+            if (!state.currentAction || !state.clipDuration) return;
+            const rect = dom.progressTrack.getBoundingClientRect();
+            const ratio = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+            const targetTime = ratio * state.clipDuration;
+            state.currentAction.time = targetTime;
+            state.mixer?.update(0);
+            updatePlaybackUi();
+        }
+        async function copyLogs() {
+            const payload = state.logs.map((entry) => [[`[${entry.timestamp}] ${entry.level.toUpperCase()} ${entry.stage}`], entry.summary, entry.details, entry.raw].flat().filter(Boolean).join('\n')).join('\n\n');
+            try { await navigator.clipboard.writeText(payload); showToast('调试日志已复制', 'success'); }
+            catch (error) { logDebug('error', 'debug-console', '复制日志失败', error.message, error); showToast('复制日志失败，请手动复制', 'error'); }
+        }
+        function resetWorkspace() {
+            clearPlayback();
+            clearSourceData();
+            clearVRMData();
+            setPreviewMode('source');
+            setStatus('等待文件', 'idle');
+            setHint('先导入一个标准 Humanoid FBX，再检查映射并导出 VRMA。');
+            renderAll();
+        }
+        function handleDrop(files) {
+            const fbxFile = files.find((file) => file.name.toLowerCase().endsWith('.fbx'));
+            const vrmFile = files.find((file) => file.name.toLowerCase().endsWith('.vrm'));
+            if (fbxFile) void loadFBX(fbxFile);
+            if (vrmFile) void loadVRM(vrmFile);
+            if (!fbxFile && !vrmFile) showToast('仅支持拖入 .fbx 和 .vrm 文件', 'error');
+        }
+        function resize() {
+            const width = dom.canvas.clientWidth;
+            const height = dom.canvas.clientHeight;
+            if (!width || !height) return;
+            renderer.setSize(width, height, false);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        }
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            controls.update();
+            if (state.mixer) state.mixer.update(delta);
+            if (state.currentVRM) state.currentVRM.update(delta);
+            updatePlaybackUi();
+            renderer.render(scene, camera);
+        }
+
+        dom.loadFbxButton.addEventListener('click', () => dom.fbxInput.click());
+        dom.loadVrmButton.addEventListener('click', () => dom.vrmInput.click());
+        dom.clearButton.addEventListener('click', resetWorkspace);
+        dom.sourcePreviewButton.addEventListener('click', () => { if (state.sourceClip) playSourcePreview(); });
+        dom.vrmPreviewButton.addEventListener('click', () => { if (state.currentVRM) void handleVerifyClick(); });
+        dom.playButton.addEventListener('click', togglePlay);
+        dom.restartButton.addEventListener('click', restartPlayback);
+        dom.speedSelect.addEventListener('change', () => { if (state.mixer) state.mixer.timeScale = Number(dom.speedSelect.value); });
+        dom.progressTrack.addEventListener('click', (event) => seekPlayback(event.clientX));
+        dom.verifyButton.addEventListener('click', () => void handleVerifyClick());
+        dom.exportButton.addEventListener('click', () => void handleExportClick());
+        dom.mappingList.addEventListener('change', handleMappingChange);
+        dom.clearLogsButton.addEventListener('click', () => { state.logs = []; renderDebugConsole(); });
+        dom.copyLogsButton.addEventListener('click', () => void copyLogs());
+        dom.debugFilterErrors.addEventListener('change', () => { state.showErrorOnly = dom.debugFilterErrors.checked; renderDebugConsole(); });
+        dom.fbxInput.addEventListener('change', (event) => { const file = event.target.files?.[0]; if (file) void loadFBX(file); event.target.value = ''; });
+        dom.vrmInput.addEventListener('change', (event) => { const file = event.target.files?.[0]; if (file) void loadVRM(file); event.target.value = ''; });
+        dom.dropzone.addEventListener('dragover', (event) => { event.preventDefault(); dom.dropzone.classList.add('dragover'); });
+        dom.dropzone.addEventListener('dragleave', () => dom.dropzone.classList.remove('dragover'));
+        dom.dropzone.addEventListener('drop', (event) => { event.preventDefault(); dom.dropzone.classList.remove('dragover'); handleDrop([...(event.dataTransfer?.files || [])]); });
+        window.addEventListener('resize', resize);
+
+        setStatus('等待文件', 'idle');
+        setHint('拖入一个标准 Humanoid FBX，或先点按钮选择文件。');
+        renderAll();
+        resize();
+        animate();
+    </script>
+</body>
+</html>
