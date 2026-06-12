@@ -39,6 +39,7 @@ const dom = {
   importSummary: document.getElementById('importSummary'),
   mappingSummary: document.getElementById('mappingSummary'),
   mappingList: document.getElementById('mappingList'),
+  railScroll: document.getElementById('railScroll'),
   exportSummary: document.getElementById('exportSummary'),
   verifyButton: document.getElementById('verifyButton'),
   exportButton: document.getElementById('exportButton'),
@@ -137,6 +138,19 @@ function showToast(message, tone = 'error') {
   showToast.timer = setTimeout(() => {
     dom.toast.classList.remove('show');
   }, 2600);
+}
+
+function resetWorkspaceScroll() {
+  document.activeElement?.blur?.();
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: 'auto',
+  });
+
+  if (dom.railScroll) {
+    dom.railScroll.scrollTop = 0;
+  }
 }
 
 function logDebug(level, stage, summary, details = '', error = null) {
@@ -852,6 +866,7 @@ async function loadFBX(file) {
     URL.revokeObjectURL(url);
     setLoading(false);
     renderAll();
+    resetWorkspaceScroll();
   }
 }
 
@@ -986,6 +1001,7 @@ function resetWorkspace() {
   setStatus('等待文件', 'idle');
   setHint('先导入一个标准 Humanoid FBX，再检查映射并导出 VRMA。');
   renderAll();
+  resetWorkspaceScroll();
 }
 
 function handleDrop(files) {

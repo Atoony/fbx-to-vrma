@@ -931,7 +931,7 @@
             </section>
 
             <aside class="rail">
-                <div class="rail-scroll">
+                <div class="rail-scroll" id="railScroll">
                     <section class="rail-section">
                         <div class="section-head">
                             <h2>导入概览</h2>
@@ -1209,6 +1209,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
             importSummary: document.getElementById('importSummary'),
             mappingSummary: document.getElementById('mappingSummary'),
             mappingList: document.getElementById('mappingList'),
+            railScroll: document.getElementById('railScroll'),
             exportSummary: document.getElementById('exportSummary'),
             verifyButton: document.getElementById('verifyButton'),
             exportButton: document.getElementById('exportButton'),
@@ -1264,6 +1265,17 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
             dom.toast.classList.add('show');
             clearTimeout(showToast.timer);
             showToast.timer = setTimeout(() => dom.toast.classList.remove('show'), 2600);
+        }
+        function resetWorkspaceScroll() {
+            document.activeElement?.blur?.();
+            window.scrollTo({
+                top: 0,
+                left: 0,
+                behavior: 'auto',
+            });
+            if (dom.railScroll) {
+                dom.railScroll.scrollTop = 0;
+            }
         }
         function logDebug(level, stage, summary, details = '', error = null) {
             const entry = {
@@ -1641,6 +1653,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
                 URL.revokeObjectURL(url);
                 setLoading(false);
                 renderAll();
+                resetWorkspaceScroll();
             }
         }
         async function loadVRM(file) {
@@ -1725,6 +1738,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
             setStatus('等待文件', 'idle');
             setHint('先导入一个标准 Humanoid FBX，再检查映射并导出 VRMA。');
             renderAll();
+            resetWorkspaceScroll();
         }
         function handleDrop(files) {
             const fbxFile = files.find((file) => file.name.toLowerCase().endsWith('.fbx'));
