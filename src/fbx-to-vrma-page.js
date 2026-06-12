@@ -15,8 +15,8 @@ import {
   getSupportedBoneIds,
 } from './fbx-to-vrma-core.js';
 
-const DEFAULT_VRM_URL = '/vrm/8590256991748008892.vrm';
-const DEFAULT_VRM_LABEL = '8590256991748008892.vrm';
+const DEFAULT_VRM_URL = '/vrm/8329890252317737768.vrm';
+const DEFAULT_VRM_LABEL = '8329890252317737768.vrm';
 
 const dom = {
   canvas: document.getElementById('viewport'),
