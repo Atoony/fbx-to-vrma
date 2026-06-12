@@ -178,6 +178,15 @@ function formatTime(seconds) {
   return `${minutes}:${String(remain).padStart(2, '0')}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function roundVec(values) {
   return values.map((value) => Number(value.toFixed(6)));
 }
@@ -429,7 +438,7 @@ function renderImportSummary() {
     items.push(`
       <article class="summary-card">
         <span class="summary-label">FBX</span>
-        <strong>${state.sourceFile.name}</strong>
+        <strong>${escapeHtml(state.sourceFile.name)}</strong>
         <span>${formatFileSize(state.sourceFile.size)} · ${state.sourceTracks.length} 条可用轨道</span>
       </article>
     `);
@@ -447,7 +456,7 @@ function renderImportSummary() {
     items.push(`
       <article class="summary-card">
         <span class="summary-label">VRM</span>
-        <strong>${state.currentVRM.meta?.name || '已载入模型'}</strong>
+        <strong>${escapeHtml(state.currentVRM.meta?.name || '已载入模型')}</strong>
         <span>可用于导出前本地验证</span>
       </article>
     `);
@@ -534,10 +543,10 @@ function renderMappingList() {
       return `
         <label class="mapping-row ${current ? 'mapped' : 'unmapped'} ${isDuplicate ? 'duplicate' : ''}">
           <span class="mapping-meta">
-            <strong>${sourceBoneName}</strong>
+            <strong>${escapeHtml(sourceBoneName)}</strong>
             <span>${source === 'preset' ? '自动识别' : '手动修正'}${isRequired ? ' · 关键骨' : ''}${isDuplicate ? ' · 重复目标' : ''}</span>
           </span>
-          <select data-source-bone="${sourceBoneName}">
+          <select data-source-bone="${escapeHtml(sourceBoneName)}">
             ${options}
           </select>
         </label>
@@ -569,7 +578,7 @@ function renderExportSummary() {
     lines.push(`
       <article class="summary-card accent">
         <span class="summary-label">最近一次构建</span>
-        <strong>${artifact.fileName || createFileName(state.sourceFile?.name, '.vrma')}</strong>
+        <strong>${escapeHtml(artifact.fileName || createFileName(state.sourceFile?.name, '.vrma'))}</strong>
         <span>${artifact.stats.channelCount} 条动画通道 · ${formatNumber(artifact.stats.duration, 2)}s</span>
       </article>
     `);
@@ -611,12 +620,12 @@ function renderDebugConsole() {
       <article class="log-entry" data-level="${entry.level}">
         <div class="log-head">
           <span class="log-pill">${entry.level}</span>
-          <strong>${entry.stage}</strong>
+          <strong>${escapeHtml(entry.stage)}</strong>
           <time>${entry.timestamp}</time>
         </div>
-        <p>${entry.summary}</p>
-        ${entry.details ? `<pre>${entry.details}</pre>` : ''}
-        ${entry.raw ? `<details><summary>原始异常</summary><pre>${entry.raw}</pre></details>` : ''}
+        <p>${escapeHtml(entry.summary)}</p>
+        ${entry.details ? `<pre>${escapeHtml(entry.details)}</pre>` : ''}
+        ${entry.raw ? `<details><summary>原始异常</summary><pre>${escapeHtml(entry.raw)}</pre></details>` : ''}
       </article>
     `)
     .join('');
