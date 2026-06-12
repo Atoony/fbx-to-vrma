@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fbx-to-vrma",
+  "compatibility_date": "2026-06-12",
+  "assets": {
+    "directory": "./dist"
+  }
+}

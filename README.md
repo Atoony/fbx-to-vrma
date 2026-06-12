@@ -1,6 +1,6 @@
 # FBX to VRMA Workbench
 
-一个可部署到 Cloudflare Pages 的纯前端静态工具，用于在浏览器里把标准 Humanoid `FBX` 动画转换为 `VRMA`，并支持本地导入 `VRM` 角色做回灌验证。
+一个可部署到 Cloudflare Workers 的纯前端静态工具，用于在浏览器里把标准 Humanoid `FBX` 动画转换为 `VRMA`，并支持本地导入 `VRM` 角色做回灌验证。
 
 ## 本地开发
 
@@ -17,14 +17,15 @@ npm run dev
 npm run build
 ```
 
-构建产物在 `dist/`，可以直接部署到 Cloudflare Pages。
+构建产物在 `dist/`，可以直接通过 Wrangler 部署到 Cloudflare Workers。
 
-## Cloudflare Pages 配置
+## Cloudflare Workers 配置
 
-- Framework preset: `Vite`
 - Build command: `npm run build`
-- Build output directory: `dist`
+- Deploy command: `npx wrangler deploy`
 - Node version: `20` 或更高
+
+仓库里已包含 [wrangler.jsonc](D:/cc-project/202606/vrm-test/fbx-to-vrma/wrangler.jsonc)，会把 `dist/` 作为静态资源目录发布。
 
 ## 说明
 
