@@ -15,6 +15,9 @@ import {
   getSupportedBoneIds,
 } from './fbx-to-vrma-core.js';
 
+const DEFAULT_VRM_URL = '/vrm/8590256991748008892.vrm';
+const DEFAULT_VRM_LABEL = '8590256991748008892.vrm';
+
 const dom = {
   canvas: document.getElementById('viewport'),
   dropzone: document.getElementById('dropzone'),
@@ -28,8 +31,6 @@ const dom = {
   loadFbxButton: document.getElementById('loadFbxButton'),
   loadVrmButton: document.getElementById('loadVrmButton'),
   clearButton: document.getElementById('clearButton'),
-  sourcePreviewButton: document.getElementById('sourcePreviewButton'),
-  vrmPreviewButton: document.getElementById('vrmPreviewButton'),
   playButton: document.getElementById('playButton'),
   restartButton: document.getElementById('restartButton'),
   speedSelect: document.getElementById('speedSelect'),
@@ -39,7 +40,11 @@ const dom = {
   importSummary: document.getElementById('importSummary'),
   mappingSummary: document.getElementById('mappingSummary'),
   mappingList: document.getElementById('mappingList'),
+  mappingScroll: document.getElementById('mappingScroll'),
   railScroll: document.getElementById('railScroll'),
+  railTabBar: document.getElementById('railTabBar'),
+  railTabs: [...document.querySelectorAll('[data-rail-tab]')],
+  railPanels: [...document.querySelectorAll('[data-rail-panel]')],
   exportSummary: document.getElementById('exportSummary'),
   verifyButton: document.getElementById('verifyButton'),
   exportButton: document.getElementById('exportButton'),
@@ -110,10 +115,13 @@ const state = {
   currentAction: null,
   clipDuration: 0,
   isPlaying: false,
-  previewMode: 'source',
+  previewMode: 'vrm',
+  activeRailTab: 'overview',
   loading: false,
   logs: [],
   showErrorOnly: false,
+  currentVRMLabel: '',
+  currentVRMIsDefault: false,
 };
 
 function setStatus(text, tone = 'idle') {
@@ -151,6 +159,32 @@ function resetWorkspaceScroll() {
   if (dom.railScroll) {
     dom.railScroll.scrollTop = 0;
   }
+
+  if (dom.mappingScroll) {
+    dom.mappingScroll.scrollTop = 0;
+  }
+}
+
+function setActiveRailTab(tabId) {
+  state.activeRailTab = tabId;
+
+  dom.railTabs.forEach((button) => {
+    const isActive = button.dataset.railTab === state.activeRailTab;
+    button.dataset.active = String(isActive);
+  });
+
+  dom.railPanels.forEach((panel) => {
+    panel.classList.toggle('is-active', panel.dataset.railPanel === state.activeRailTab);
+  });
+}
+
+function handleRailTabClick(event) {
+  const button = event.target.closest('[data-rail-tab]');
+  if (!button) {
+    return;
+  }
+
+  setActiveRailTab(button.dataset.railTab);
 }
 
 function logDebug(level, stage, summary, details = '', error = null) {
@@ -345,6 +379,8 @@ function clearVRMData() {
 
   state.currentVRM = null;
   state.currentVRMGroup = null;
+  state.currentVRMLabel = '';
+  state.currentVRMIsDefault = false;
   state.exportArtifact = null;
 }
 
@@ -369,9 +405,6 @@ function setPreviewMode(mode) {
   if (state.currentVRMGroup) {
     state.currentVRMGroup.visible = mode === 'vrm';
   }
-
-  dom.sourcePreviewButton.dataset.active = String(mode === 'source');
-  dom.vrmPreviewButton.dataset.active = String(mode === 'vrm');
 }
 
 function playSourcePreview() {
@@ -390,7 +423,7 @@ function playSourcePreview() {
   state.clipDuration = state.sourceClip.duration || 0;
   state.isPlaying = true;
   setStatus('正在预览 FBX 原始动画', 'ready');
-  setHint('当前是源 FBX 预览。加载 VRM 后可以切换到角色验证模式。');
+  setHint('当前显示原始 FBX 动画。补齐右侧映射后，可点击“重新角色预览”把动作重新套用到角色。');
   updatePlaybackUi();
 }
 
@@ -410,8 +443,8 @@ function playVRMPreview(vrmAnimation) {
   state.mixer.timeScale = Number(dom.speedSelect.value);
   state.clipDuration = clip.duration || 0;
   state.isPlaying = true;
-  setStatus('正在预览导出的 VRMA', 'ready');
-  setHint('当前是 VRM 验证预览，说明导出的 VRMA 已被本地重新解析。');
+  setStatus('正在预览角色动画', 'ready');
+  setHint('当前角色预览来自本地回灌验证。修改映射后可再次点击“重新角色预览”刷新效果。');
   updatePlaybackUi();
 }
 
@@ -431,10 +464,9 @@ function updateActionButtons() {
   const hasSource = Boolean(state.sourceClip);
   const hasVRM = Boolean(state.currentVRM);
   const hasTracks = state.sourceTracks.length > 0;
+  const hasCustomVRM = hasVRM && !state.currentVRMIsDefault;
 
-  dom.clearButton.disabled = !hasSource && !hasVRM;
-  dom.sourcePreviewButton.disabled = !hasSource;
-  dom.vrmPreviewButton.disabled = !hasSource || !hasVRM || !validation.isValid;
+  dom.clearButton.disabled = !hasSource && !hasCustomVRM && !state.exportArtifact;
   dom.verifyButton.disabled = !hasSource || !hasVRM || !validation.isValid || !hasTracks;
   dom.exportButton.disabled = !hasSource || !validation.isValid || !hasTracks;
 
@@ -470,16 +502,16 @@ function renderImportSummary() {
     items.push(`
       <article class="summary-card">
         <span class="summary-label">VRM</span>
-        <strong>${escapeHtml(state.currentVRM.meta?.name || '已载入模型')}</strong>
-        <span>可用于导出前本地验证</span>
+        <strong>${escapeHtml(state.currentVRMLabel || state.currentVRM.meta?.name || '已载入模型')}</strong>
+        <span>${state.currentVRMIsDefault ? '内置默认 VRM 已就绪，可随时更换成你的自定义角色。' : '自定义 VRM 已载入，后续导入 FBX 会直接套用到这个角色。'}</span>
       </article>
     `);
   } else {
     items.push(`
       <article class="summary-card empty">
         <span class="summary-label">VRM</span>
-        <strong>可选</strong>
-        <span>导入后可以直接预览导出的 VRMA 套用效果。</span>
+        <strong>等待载入</strong>
+        <span>默认 VRM 加载失败时，可以手动上传自定义 VRM 继续使用。</span>
       </article>
     `);
   }
@@ -816,13 +848,7 @@ async function handleExportClick() {
   }
 }
 
-async function loadFBX(file) {
-  logDebug('info', 'load-fbx', '开始读取 FBX', `${file.name} · ${formatFileSize(file.size)}`);
-  setLoading(true);
-  setStatus('正在加载 FBX...', 'loading');
-
-  const url = URL.createObjectURL(file);
-
+async function loadFBXFromUrl(file, url) {
   try {
     clearSourceData();
     clearPlayback();
@@ -843,14 +869,29 @@ async function loadFBX(file) {
     const inferred = inferHumanoidMap(state.sourceBoneNames);
     state.detectedPreset = inferred.preset;
     state.humanoidMap = inferred.mapping;
+    const validation = validateHumanoidMap(state.humanoidMap);
 
     scene.add(fbx);
-    setPreviewMode('source');
-    frameObject(fbx);
-    playSourcePreview();
+    setActiveRailTab('mapping');
 
-    setStatus('FBX 已载入', 'ready');
-    setHint('自动映射已完成。先检查右侧关键骨状态，再决定是否手动修正。');
+    if (state.currentVRM && validation.isValid && state.sourceTracks.length > 0) {
+      await verifyArtifact(true);
+      setStatus('FBX 已载入并套用到角色', 'ready');
+      setHint('已切到映射面板。自动预览已更新，修改映射后可点击“重新角色预览”刷新角色效果。');
+    } else {
+      setPreviewMode('source');
+      frameObject(fbx);
+      playSourcePreview();
+
+      if (validation.isValid) {
+        setStatus('FBX 已载入', 'ready');
+        setHint('FBX 检测通过，但当前角色还没准备好。可更换 VRM，或稍后点击“重新角色预览”回灌检查。');
+      } else {
+        setStatus('FBX 已载入，等待修正映射', 'ready');
+        setHint('自动映射已完成，但还需要补齐关键骨或去掉重复目标，之后再点击“重新角色预览”。');
+      }
+    }
+
     logDebug(
       'info',
       'map-bones',
@@ -870,12 +911,32 @@ async function loadFBX(file) {
   }
 }
 
-async function loadVRM(file) {
-  logDebug('info', 'load-vrm', '开始读取 VRM', file.name);
+async function loadFBX(file) {
+  logDebug('info', 'load-fbx', '开始读取 FBX', `${file.name} · ${formatFileSize(file.size)}`);
   setLoading(true);
-  setStatus('正在加载 VRM...', 'loading');
+  setStatus('正在加载 FBX...', 'loading');
 
   const url = URL.createObjectURL(file);
+
+  try {
+    await loadFBXFromUrl(file, url);
+  } finally {
+    URL.revokeObjectURL(url);
+    setLoading(false);
+    renderAll();
+    resetWorkspaceScroll();
+  }
+}
+
+async function loadVRMFromUrl(url, options = {}) {
+  const {
+    isDefault = false,
+    label = DEFAULT_VRM_LABEL,
+  } = options;
+
+  logDebug('info', 'load-vrm', isDefault ? '开始读取默认 VRM' : '开始读取 VRM', label);
+  setLoading(true);
+  setStatus(isDefault ? '正在加载默认 VRM...' : '正在加载 VRM...', 'loading');
 
   try {
     clearVRMData();
@@ -891,24 +952,65 @@ async function loadVRM(file) {
 
     state.currentVRM = vrm;
     state.currentVRMGroup = vrm.scene;
-    state.currentVRMGroup.visible = state.previewMode === 'vrm';
+    state.currentVRMLabel = vrm.meta?.name || label;
+    state.currentVRMIsDefault = isDefault;
+    setPreviewMode('vrm');
     scene.add(state.currentVRMGroup);
+    frameObject(state.currentVRMGroup);
 
-    if (state.previewMode === 'vrm') {
-      frameObject(state.currentVRMGroup);
+    if (state.sourceClip && validateHumanoidMap(state.humanoidMap).isValid && state.sourceTracks.length > 0) {
+      await verifyArtifact(true);
+      setActiveRailTab('mapping');
+      setStatus(isDefault ? '默认 VRM 已就绪' : 'VRM 已替换并完成预览', 'ready');
+      setHint(
+        isDefault
+          ? '内置默认 VRM 已就绪，导入 FBX 后会直接套用预览。'
+          : '自定义 VRM 已替换成功，当前动作已重新套用到新角色上。',
+      );
+    } else {
+      setStatus(isDefault ? '默认 VRM 已就绪' : 'VRM 已载入', 'ready');
+      setHint(
+        isDefault
+          ? '内置默认 VRM 已就绪，你现在只需要导入 FBX。'
+          : '自定义 VRM 已载入，后续导入 FBX 会直接套用到这个角色。',
+      );
     }
 
-    setStatus('VRM 已载入', 'ready');
-    setHint('现在可以点击“验证当前导出”，直接在角色上回灌预览生成的 VRMA。');
-    logDebug('info', 'load-vrm', 'VRM 载入完成', vrm.meta?.name || file.name);
+    logDebug('info', 'load-vrm', isDefault ? '默认 VRM 载入完成' : 'VRM 载入完成', vrm.meta?.name || label);
+    return vrm;
   } catch (error) {
-    setStatus('VRM 加载失败', 'error');
-    logDebug('error', 'load-vrm', 'VRM 解析失败', error.message, error);
-    showToast(`VRM 加载失败：${error.message}`, 'error');
+    setStatus(isDefault ? '默认 VRM 加载失败' : 'VRM 加载失败', 'error');
+    setHint(isDefault ? '默认 VRM 未能载入，请手动上传自定义 VRM 继续工作。' : '请检查上传的 VRM 文件是否有效。');
+    logDebug('error', 'load-vrm', isDefault ? '默认 VRM 解析失败' : 'VRM 解析失败', error.message, error);
+    showToast(isDefault ? `默认 VRM 加载失败：${error.message}` : `VRM 加载失败：${error.message}`, 'error');
+    throw error;
   } finally {
-    URL.revokeObjectURL(url);
     setLoading(false);
     renderAll();
+  }
+}
+
+async function loadVRM(file) {
+  const url = URL.createObjectURL(file);
+
+  try {
+    await loadVRMFromUrl(url, {
+      isDefault: false,
+      label: file.name,
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function bootstrapDefaultVRM() {
+  try {
+    await loadVRMFromUrl(DEFAULT_VRM_URL, {
+      isDefault: true,
+      label: DEFAULT_VRM_LABEL,
+    });
+  } catch (error) {
+    logDebug('warning', 'load-vrm', '默认 VRM 未就绪，等待手动上传', error.message);
   }
 }
 
@@ -994,14 +1096,27 @@ async function copyLogs() {
 }
 
 function resetWorkspace() {
+  const needsDefaultRestore = !state.currentVRMIsDefault;
+
   clearPlayback();
   clearSourceData();
-  clearVRMData();
-  setPreviewMode('source');
-  setStatus('等待文件', 'idle');
-  setHint('先导入一个标准 Humanoid FBX，再检查映射并导出 VRMA。');
+
+  if (needsDefaultRestore) {
+    clearVRMData();
+  } else {
+    setPreviewMode('vrm');
+    frameObject(state.currentVRMGroup);
+  }
+
+  setActiveRailTab('overview');
+  setStatus(needsDefaultRestore ? '正在恢复默认 VRM...' : '默认 VRM 已就绪', needsDefaultRestore ? 'loading' : 'ready');
+  setHint(needsDefaultRestore ? '正在恢复内置默认 VRM，请稍候。' : '内置默认 VRM 已就绪，导入 FBX 后会直接进入角色预览。');
   renderAll();
   resetWorkspaceScroll();
+
+  if (needsDefaultRestore) {
+    void bootstrapDefaultVRM();
+  }
 }
 
 function handleDrop(files) {
@@ -1053,16 +1168,6 @@ function animate() {
 dom.loadFbxButton.addEventListener('click', () => dom.fbxInput.click());
 dom.loadVrmButton.addEventListener('click', () => dom.vrmInput.click());
 dom.clearButton.addEventListener('click', resetWorkspace);
-dom.sourcePreviewButton.addEventListener('click', () => {
-  if (state.sourceClip) {
-    playSourcePreview();
-  }
-});
-dom.vrmPreviewButton.addEventListener('click', () => {
-  if (state.currentVRM) {
-    void handleVerifyClick();
-  }
-});
 dom.playButton.addEventListener('click', togglePlay);
 dom.restartButton.addEventListener('click', restartPlayback);
 dom.speedSelect.addEventListener('change', () => {
@@ -1073,6 +1178,7 @@ dom.speedSelect.addEventListener('change', () => {
 dom.progressTrack.addEventListener('click', (event) => seekPlayback(event.clientX));
 dom.verifyButton.addEventListener('click', () => void handleVerifyClick());
 dom.exportButton.addEventListener('click', () => void handleExportClick());
+dom.railTabBar.addEventListener('click', handleRailTabClick);
 dom.mappingList.addEventListener('change', handleMappingChange);
 dom.clearLogsButton.addEventListener('click', () => {
   state.logs = [];
@@ -1118,8 +1224,10 @@ dom.dropzone.addEventListener('drop', (event) => {
 
 window.addEventListener('resize', resize);
 
-setStatus('等待文件', 'idle');
-setHint('拖入一个标准 Humanoid FBX，或先点按钮选择文件。');
+setStatus('正在加载默认 VRM...', 'loading');
+setHint('内置默认 VRM 加载中，完成后你只需要导入 FBX。');
+setActiveRailTab('overview');
 renderAll();
 resize();
 animate();
+void bootstrapDefaultVRM();

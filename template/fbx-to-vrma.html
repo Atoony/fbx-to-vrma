@@ -17,6 +17,11 @@
         }
     }
     </script>
+    <script>
+        if (window.location.pathname.includes('/template/')) {
+            window.location.replace(new URL('../index.html', window.location.href).href);
+        }
+    </script>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -47,9 +52,10 @@
             --radius-sm: 12px;
             --radius-md: 18px;
             --radius-lg: 28px;
-            --frame-gap-top: 20px;
-            --frame-gap-bottom: 28px;
+            --frame-gap-top: 12px;
+            --frame-gap-bottom: 18px;
             --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+            --shadow-soft: 0 14px 32px rgba(0, 0, 0, 0.18);
             --font-display: "Chivo", sans-serif;
             --font-body: "Red Hat Display", sans-serif;
         }
@@ -66,36 +72,37 @@
                 radial-gradient(circle at bottom right, rgba(86, 130, 113, 0.18), transparent 32%),
                 linear-gradient(160deg, oklch(0.12 0.016 72), oklch(0.1 0.012 62));
             color: var(--text);
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow: hidden;
         }
 
         .shell {
-            width: min(1600px, calc(100vw - 32px));
+            width: min(1620px, calc(100vw - 32px));
             margin: var(--frame-gap-top) auto var(--frame-gap-bottom);
             display: grid;
             grid-template-rows: auto minmax(0, 1fr);
-            gap: var(--space-5);
-            min-height: calc(100dvh - (var(--frame-gap-top) + var(--frame-gap-bottom)));
+            gap: 16px;
+            height: calc(100dvh - (var(--frame-gap-top) + var(--frame-gap-bottom)));
+            min-height: 0;
         }
 
         .masthead {
             display: grid;
-            grid-template-columns: minmax(0, 1.2fr) auto;
-            gap: var(--space-4);
-            padding: clamp(20px, 3vw, 32px);
+            grid-template-columns: minmax(0, 1.05fr) auto;
+            gap: 12px 24px;
+            padding: 18px 20px;
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
+            border-radius: 22px;
             background:
-                linear-gradient(135deg, rgba(255, 206, 125, 0.08), transparent 30%),
-                linear-gradient(180deg, rgba(19, 18, 16, 0.82), rgba(26, 24, 22, 0.9));
+                radial-gradient(circle at top right, rgba(255, 206, 125, 0.08), transparent 28%),
+                linear-gradient(180deg, rgba(19, 18, 16, 0.82), rgba(24, 22, 20, 0.94));
             box-shadow: var(--shadow);
+            align-items: center;
         }
 
         .kicker {
-            margin-bottom: var(--space-2);
-            font-size: 12px;
-            letter-spacing: 0.24em;
+            margin-bottom: 6px;
+            font-size: 11px;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
             color: var(--accent);
         }
@@ -103,24 +110,28 @@
         h1 {
             margin: 0;
             font-family: var(--font-display);
-            font-size: clamp(2rem, 4vw, 3.8rem);
-            line-height: 0.95;
+            font-size: clamp(1.9rem, 3vw, 2.9rem);
+            line-height: 0.9;
             letter-spacing: -0.04em;
-            max-width: 12ch;
+            max-width: 11ch;
         }
 
         .lede {
-            max-width: 62ch;
-            margin-top: var(--space-3);
+            max-width: 52ch;
+            margin-top: 10px;
             color: var(--text-soft);
-            line-height: 1.68;
+            line-height: 1.55;
+            font-size: 13px;
         }
 
         .masthead-side {
-            display: grid;
-            align-content: space-between;
-            gap: var(--space-4);
-            min-width: 300px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            min-width: 320px;
+            align-self: stretch;
         }
 
         .status-strip,
@@ -128,7 +139,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: flex-end;
-            gap: var(--space-2);
+            gap: 8px;
         }
 
         .status-pill,
@@ -136,12 +147,13 @@
             display: inline-flex;
             align-items: center;
             gap: var(--space-2);
-            padding: 10px 14px;
+            padding: 9px 13px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.035);
             border: 1px solid rgba(255, 255, 255, 0.08);
             color: var(--text-soft);
-            font-size: 13px;
+            font-size: 12px;
+            white-space: nowrap;
         }
 
         .status-dot {
@@ -158,37 +170,44 @@
 
         .workspace {
             display: grid;
-            grid-template-columns: minmax(0, 1.18fr) minmax(380px, 0.88fr);
-            gap: var(--space-5);
+            grid-template-columns: minmax(0, 1.3fr) minmax(390px, 0.7fr);
+            gap: 16px;
             min-height: 0;
-            align-items: start;
+            height: 100%;
+            align-items: stretch;
         }
 
         .stage-column,
         .rail {
             min-width: 0;
+            min-height: 0;
+        }
+
+        .stage-column {
+            height: 100%;
         }
 
         .stage-panel,
         .rail {
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
+            border-radius: 24px;
             background: linear-gradient(180deg, rgba(28, 26, 24, 0.94), rgba(19, 18, 17, 0.98));
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-soft);
         }
 
         .stage-panel {
             display: grid;
             grid-template-rows: auto minmax(0, 1fr) auto;
             overflow: hidden;
-            min-height: min(820px, calc(100dvh - 180px));
+            height: 100%;
+            min-height: 0;
         }
 
         .stage-toolbar,
         .stage-footer {
             display: grid;
-            gap: var(--space-3);
-            padding: var(--space-4) var(--space-5);
+            gap: 10px;
+            padding: 16px 18px;
         }
 
         .stage-toolbar {
@@ -206,7 +225,7 @@
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: var(--space-3);
+            gap: 12px;
         }
 
         .button-row,
@@ -214,7 +233,7 @@
         .meta-row {
             display: flex;
             flex-wrap: wrap;
-            gap: var(--space-2);
+            gap: 10px;
             align-items: center;
         }
 
@@ -235,13 +254,15 @@
         .action-button,
         .ghost-button {
             border-radius: 999px;
-            padding: 11px 16px;
+            min-height: 44px;
+            padding: 11px 17px;
         }
 
         .action-button {
             background: linear-gradient(135deg, var(--accent), var(--accent-strong));
             color: oklch(0.2 0.02 70);
             font-weight: 700;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
         }
 
         .ghost-button {
@@ -286,6 +307,7 @@
             display: inline-flex;
             align-items: center;
             gap: 10px;
+            min-height: 42px;
             padding: 9px 12px;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.04);
@@ -303,9 +325,15 @@
         }
 
         .active-hint {
-            color: var(--text-dim);
-            font-size: 13px;
-            min-height: 20px;
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--text-soft);
+            font-size: 12px;
         }
 
         .transport-label {
@@ -317,10 +345,12 @@
 
         .dropzone {
             position: relative;
-            min-height: clamp(320px, 44dvh, 520px);
+            min-height: 0;
             background:
                 radial-gradient(circle at 50% 15%, rgba(255, 196, 99, 0.08), transparent 24%),
                 linear-gradient(180deg, rgba(24, 22, 20, 0.78), rgba(16, 15, 14, 0.96));
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
 
         .dropzone.dragover::after {
@@ -442,56 +472,165 @@
             display: grid;
             grid-template-rows: minmax(0, 1fr);
             overflow: hidden;
-            min-height: min(820px, calc(100dvh - 180px));
-            padding: var(--space-4);
+            height: 100%;
+            min-height: 0;
+            padding: 0;
         }
 
         .rail-scroll {
-            overflow: auto;
+            overflow: hidden;
+            height: 100%;
             min-height: 0;
-            padding: 0 0 calc(var(--space-5) + 6px);
+            padding: 0;
             display: grid;
-            gap: var(--space-4);
-            align-content: start;
-            scrollbar-gutter: stable;
+            grid-template-rows: minmax(0, 1fr);
         }
 
-        .rail-section {
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: var(--radius-md);
-            background: rgba(255, 255, 255, 0.025);
-            padding: 18px;
+        .rail-card {
+            min-height: 0;
+            height: 100%;
             display: grid;
-            gap: var(--space-3);
+            grid-template-rows: auto minmax(0, 1fr);
+            overflow: hidden;
+            border-radius: inherit;
+            background:
+                linear-gradient(180deg, rgba(26, 24, 22, 0.96), rgba(18, 17, 15, 0.98));
+        }
+
+        .rail-card-head {
+            display: grid;
+            gap: 14px;
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background:
+                linear-gradient(180deg, rgba(255, 202, 116, 0.06), rgba(255, 255, 255, 0.01)),
+                rgba(255, 255, 255, 0.012);
+        }
+
+        .rail-card-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .rail-card-title h2 {
+            margin: 0;
+            font-size: 17px;
+            letter-spacing: 0.01em;
+        }
+
+        .rail-card-title span {
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .rail-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .rail-tab {
+            appearance: none;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.035);
+            color: var(--text-soft);
+            min-height: 36px;
+            padding: 8px 14px;
+            font: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+        }
+
+        .rail-tab:hover {
+            transform: translateY(-1px);
+        }
+
+        .rail-tab[data-active="true"] {
+            background: rgba(255, 206, 125, 0.1);
+            border-color: rgba(255, 206, 125, 0.3);
+            color: var(--text);
+        }
+
+        .rail-panels {
+            height: 100%;
+            min-height: 0;
+            position: relative;
+        }
+
+        .rail-panel {
+            display: none;
+            height: 100%;
+            min-height: 0;
+            padding: 18px;
             overflow: hidden;
         }
 
-        .rail-section--export {
+        .rail-panel.is-active {
+            display: grid;
+        }
+
+        .rail-panel--overview,
+        .rail-panel--export {
+            align-content: start;
+            gap: 16px;
+            overflow: auto;
+            scrollbar-gutter: stable;
+        }
+
+        .rail-panel--mapping {
+            height: 100%;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .rail-panel--debug {
+            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .rail-block {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.024);
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        .rail-block.accent {
             background:
                 linear-gradient(180deg, rgba(255, 202, 116, 0.035), rgba(255, 255, 255, 0.02)),
                 rgba(255, 255, 255, 0.015);
             border-color: rgba(255, 206, 125, 0.12);
         }
 
-        .rail-section--debug {
-            grid-template-rows: auto auto minmax(0, 1fr);
-            min-height: 320px;
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018)),
-                rgba(255, 255, 255, 0.018);
+        .mapping-shell {
+            height: 100%;
+            min-height: 0;
+            overflow: auto;
+            padding-right: 6px;
+            scrollbar-gutter: stable;
+            align-content: start;
         }
 
         .section-head {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            gap: var(--space-3);
+            gap: 12px;
         }
 
         .section-head h2 {
             margin: 0;
             font-family: var(--font-display);
-            font-size: 1.1rem;
+            font-size: 1.08rem;
             letter-spacing: -0.02em;
         }
 
@@ -502,8 +641,8 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: var(--space-3);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
         }
 
         .summary-grid.compact {
@@ -512,10 +651,10 @@
 
         .summary-card {
             display: grid;
-            gap: 6px;
-            padding: 14px;
+            gap: 8px;
+            padding: 16px;
             border-radius: var(--radius-sm);
-            background: rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.042);
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
@@ -541,7 +680,8 @@
         }
 
         .summary-card strong {
-            font-size: 14px;
+            font-size: 18px;
+            line-height: 1;
         }
 
         .summary-card span:last-child {
@@ -580,17 +720,17 @@
 
         .mapping-list {
             display: grid;
-            gap: 10px;
+            gap: 12px;
         }
 
         .mapping-row {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(170px, 220px);
-            gap: var(--space-3);
+            grid-template-columns: minmax(0, 1fr) minmax(176px, 214px);
+            gap: 14px;
             align-items: center;
-            padding: 12px 14px;
-            border-radius: var(--radius-sm);
-            background: rgba(255, 255, 255, 0.035);
+            padding: 14px 15px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
@@ -605,7 +745,7 @@
 
         .mapping-meta {
             display: grid;
-            gap: 4px;
+            gap: 6px;
             min-width: 0;
         }
 
@@ -613,6 +753,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            font-size: 15px;
         }
 
         .mapping-meta span {
@@ -626,6 +767,7 @@
             background: rgba(16, 15, 14, 0.9);
             color: var(--text);
             border-radius: 12px;
+            min-height: 42px;
             padding: 10px 12px;
             outline: none;
         }
@@ -653,7 +795,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
-            gap: var(--space-3);
+            gap: 12px;
             align-items: center;
         }
 
@@ -676,11 +818,17 @@
 
         .debug-log {
             display: grid;
-            gap: 10px;
+            gap: 12px;
             min-height: 0;
-            max-height: none;
             overflow: auto;
-            padding-right: 4px;
+            padding-right: 6px;
+            scrollbar-gutter: stable;
+        }
+
+        .log-entry pre,
+        .debug-log pre {
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
         .log-entry {
@@ -794,10 +942,6 @@
                 padding: 0;
             }
 
-            .rail-section--debug {
-                min-height: 260px;
-            }
-
             .summary-grid,
             .summary-grid.compact {
                 grid-template-columns: 1fr;
@@ -808,7 +952,7 @@
             .shell {
                 width: min(100vw - 18px, 1600px);
                 margin: 10px auto 20px;
-                gap: var(--space-4);
+                gap: 12px;
             }
 
             .masthead {
@@ -819,6 +963,17 @@
             .status-strip,
             .badge-strip {
                 justify-content: flex-start;
+            }
+
+            .rail-card {
+                min-height: auto;
+            }
+
+            .rail-panels,
+            .rail-panel,
+            .mapping-shell,
+            .debug-log {
+                overflow: visible;
             }
 
             .mapping-row {
@@ -861,18 +1016,13 @@
                         <div class="toolbar-main">
                             <div class="button-row">
                                 <button class="action-button" id="loadFbxButton" type="button">导入 FBX</button>
-                                <button class="ghost-button" id="loadVrmButton" type="button">导入 VRM（可选）</button>
+                                <button class="ghost-button" id="loadVrmButton" type="button">更换 VRM</button>
                                 <button class="ghost-button" id="clearButton" type="button" disabled>清空工作台</button>
-                            </div>
-
-                            <div class="meta-row">
-                                <button class="ghost-button" id="sourcePreviewButton" type="button" data-active="true" disabled>源动画预览</button>
-                                <button class="ghost-button" id="vrmPreviewButton" type="button" data-active="false" disabled>角色验证预览</button>
                             </div>
                         </div>
 
                         <div class="toolbar-sub">
-                            <span class="active-hint" id="activeHint">拖入一个标准 Humanoid FBX，或先点按钮选择文件。</span>
+                            <span class="active-hint" id="activeHint">内置默认 VRM 加载中，完成后你只需要导入 FBX。</span>
                         </div>
                     </div>
 
@@ -881,14 +1031,14 @@
 
                         <div class="empty-overlay visible" id="emptyOverlay">
                             <div class="overlay-card">
-                                <h2 class="overlay-title">先把动作拖进来</h2>
+                                <h2 class="overlay-title">内置默认 VRM 已就绪</h2>
                                 <p class="overlay-copy">
-                                    左侧舞台默认预览原始 FBX 动画；如果你再导入一个 VRM，导出的 VRMA 会在同一页里回灌并直接驱动目标角色。
+                                    现在主流程只需要上传一个标准 Humanoid FBX。通过检测后，动作会直接套用到默认角色上预览；如果需要，你仍然可以随时更换成自己的 VRM。
                                 </p>
                                 <div class="overlay-points">
-                                    <span>1. 支持拖入 <code>.fbx</code> 和 <code>.vrm</code></span>
-                                    <span>2. 先自动映射，再按需手动修正</span>
-                                    <span>3. 导出前后都能看到诊断日志</span>
+                                    <span>1. 优先拖入或选择 <code>.fbx</code></span>
+                                    <span>2. 自动切到映射面板，按需手动修正</span>
+                                    <span>3. 可随时点击“更换 VRM”载入自定义角色</span>
                                 </div>
                             </div>
                         </div>
@@ -931,62 +1081,88 @@
             </section>
 
             <aside class="rail">
-                <div class="rail-scroll" id="railScroll">
-                    <section class="rail-section">
-                        <div class="section-head">
-                            <h2>导入概览</h2>
-                            <span>阶段 1</span>
+                <section class="rail-card">
+                    <div class="rail-card-head">
+                        <div class="rail-card-title">
+                            <h2>工作台侧栏</h2>
+                            <span>映射、导出与调试</span>
                         </div>
-                        <div class="summary-grid" id="importSummary"></div>
-                    </section>
 
-                    <section class="rail-section">
-                        <div class="section-head">
-                            <h2>映射状态</h2>
-                            <span>阶段 2</span>
+                        <div class="rail-tabs" id="railTabBar">
+                            <button class="rail-tab" type="button" data-rail-tab="overview" data-active="true">概览</button>
+                            <button class="rail-tab" type="button" data-rail-tab="mapping" data-active="false">映射</button>
+                            <button class="rail-tab" type="button" data-rail-tab="export" data-active="false">导出</button>
+                            <button class="rail-tab" type="button" data-rail-tab="debug" data-active="false">调试</button>
                         </div>
-                        <div id="mappingSummary"></div>
-                    </section>
+                    </div>
 
-                    <section class="rail-section">
-                        <div class="section-head">
-                            <h2>手动修正</h2>
-                            <span>阶段 3</span>
-                        </div>
-                        <div class="mapping-list" id="mappingList"></div>
-                    </section>
+                    <div class="rail-scroll" id="railScroll">
+                        <div class="rail-panels">
+                            <section class="rail-panel rail-panel--overview is-active" data-rail-panel="overview">
+                                <div class="rail-block">
+                                    <div class="section-head">
+                                        <h2>导入概览</h2>
+                                        <span>阶段 1</span>
+                                    </div>
+                                    <div class="summary-grid" id="importSummary"></div>
+                                </div>
+                            </section>
 
-                    <section class="rail-section rail-section--export">
-                        <div class="section-head">
-                            <h2>导出与验证</h2>
-                            <span>阶段 4</span>
-                        </div>
-                        <div id="exportSummary"></div>
-                        <div class="action-stack">
-                            <button class="ghost-button" id="verifyButton" type="button" disabled>验证当前导出</button>
-                            <button class="action-button" id="exportButton" type="button" disabled>导出 VRMA</button>
-                        </div>
-                    </section>
+                            <section class="rail-panel rail-panel--mapping" data-rail-panel="mapping">
+                                <div class="rail-block">
+                                    <div class="section-head">
+                                        <h2>映射状态</h2>
+                                        <span>阶段 2</span>
+                                    </div>
+                                    <div id="mappingSummary"></div>
+                                </div>
 
-                    <section class="rail-section rail-section--debug">
-                        <div class="section-head">
-                            <h2>调试窗口</h2>
-                            <span>阶段 5</span>
-                        </div>
-                        <div class="console-controls">
-                            <div class="console-actions">
-                                <button class="ghost-button" id="copyLogsButton" type="button">复制日志</button>
-                                <button class="ghost-button" id="clearLogsButton" type="button">清空日志</button>
-                            </div>
+                                <div class="rail-block mapping-shell" id="mappingScroll">
+                                    <div class="section-head">
+                                        <h2>手动修正</h2>
+                                        <span>阶段 3</span>
+                                    </div>
+                                    <div class="mapping-list" id="mappingList"></div>
+                                </div>
+                            </section>
 
-                            <label class="console-filter">
-                                <input type="checkbox" id="debugFilterErrors">
-                                <span>只看错误</span>
-                            </label>
+                            <section class="rail-panel rail-panel--export" data-rail-panel="export">
+                                <div class="rail-block accent">
+                                    <div class="section-head">
+                                        <h2>导出与验证</h2>
+                                        <span>阶段 4</span>
+                                    </div>
+                                    <div id="exportSummary"></div>
+                                    <div class="action-stack">
+                                        <button class="ghost-button" id="verifyButton" type="button" disabled>重新角色预览</button>
+                                        <button class="action-button" id="exportButton" type="button" disabled>导出 VRMA</button>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="rail-panel rail-panel--debug" data-rail-panel="debug">
+                                <div class="rail-block">
+                                    <div class="section-head">
+                                        <h2>调试窗口</h2>
+                                        <span>阶段 5</span>
+                                    </div>
+                                    <div class="console-controls">
+                                        <div class="console-actions">
+                                            <button class="ghost-button" id="copyLogsButton" type="button">复制日志</button>
+                                            <button class="ghost-button" id="clearLogsButton" type="button">清空日志</button>
+                                        </div>
+
+                                        <label class="console-filter">
+                                            <input type="checkbox" id="debugFilterErrors">
+                                            <span>只看错误</span>
+                                        </label>
+                                    </div>
+                                    <div class="debug-log" id="debugLog"></div>
+                                </div>
+                            </section>
                         </div>
-                        <div class="debug-log" id="debugLog"></div>
-                    </section>
-                </div>
+                    </div>
+                </section>
             </aside>
         </main>
     </div>
@@ -1209,7 +1385,11 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
             importSummary: document.getElementById('importSummary'),
             mappingSummary: document.getElementById('mappingSummary'),
             mappingList: document.getElementById('mappingList'),
+            mappingScroll: document.getElementById('mappingScroll'),
             railScroll: document.getElementById('railScroll'),
+            railTabBar: document.getElementById('railTabBar'),
+            railTabs: [...document.querySelectorAll('[data-rail-tab]')],
+            railPanels: [...document.querySelectorAll('[data-rail-panel]')],
             exportSummary: document.getElementById('exportSummary'),
             verifyButton: document.getElementById('verifyButton'),
             exportButton: document.getElementById('exportButton'),
@@ -1253,7 +1433,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
         const state = {
             sourceFile: null, sourceRoot: null, sourceClip: null, sourceTracks: [], sourceBoneNames: [], restPose: {}, sourceUnitScale: 1, detectedPreset: null, humanoidMap: {},
             currentVRM: null, currentVRMGroup: null, exportArtifact: null, mixer: null, currentAction: null, clipDuration: 0, isPlaying: false, previewMode: 'source',
-            loading: false, logs: [], showErrorOnly: false,
+            activeRailTab: 'overview', loading: false, logs: [], showErrorOnly: false,
         };
 
         function setStatus(text, tone = 'idle') { dom.statusText.textContent = text; dom.statusDot.dataset.tone = tone; }
@@ -1276,6 +1456,24 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
             if (dom.railScroll) {
                 dom.railScroll.scrollTop = 0;
             }
+            if (dom.mappingScroll) {
+                dom.mappingScroll.scrollTop = 0;
+            }
+        }
+        function setActiveRailTab(tabId) {
+            state.activeRailTab = tabId;
+            dom.railTabs.forEach((button) => {
+                const isActive = button.dataset.railTab === state.activeRailTab;
+                button.dataset.active = String(isActive);
+            });
+            dom.railPanels.forEach((panel) => {
+                panel.classList.toggle('is-active', panel.dataset.railPanel === state.activeRailTab);
+            });
+        }
+        function handleRailTabClick(event) {
+            const button = event.target.closest('[data-rail-tab]');
+            if (!button) return;
+            setActiveRailTab(button.dataset.railTab);
         }
         function logDebug(level, stage, summary, details = '', error = null) {
             const entry = {
@@ -1641,6 +1839,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
                 setPreviewMode('source');
                 frameObject(fbx);
                 playSourcePreview();
+                setActiveRailTab('mapping');
                 setStatus('FBX 已载入', 'ready');
                 setHint('自动映射已完成。先检查右侧关键骨状态，再决定是否手动修正。');
                 logDebug('info', 'map-bones', '完成自动骨骼识别', `${state.sourceBoneNames.length} 个源骨骼 · 预设 ${state.detectedPreset || '未命中'} · 单位缩放 ${state.sourceUnitScale}`);
@@ -1735,6 +1934,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
             clearSourceData();
             clearVRMData();
             setPreviewMode('source');
+            setActiveRailTab('overview');
             setStatus('等待文件', 'idle');
             setHint('先导入一个标准 Humanoid FBX，再检查映射并导出 VRMA。');
             renderAll();
@@ -1776,6 +1976,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
         dom.progressTrack.addEventListener('click', (event) => seekPlayback(event.clientX));
         dom.verifyButton.addEventListener('click', () => void handleVerifyClick());
         dom.exportButton.addEventListener('click', () => void handleExportClick());
+        dom.railTabBar.addEventListener('click', handleRailTabClick);
         dom.mappingList.addEventListener('change', handleMappingChange);
         dom.clearLogsButton.addEventListener('click', () => { state.logs = []; renderDebugConsole(); });
         dom.copyLogsButton.addEventListener('click', () => void copyLogs());
@@ -1789,6 +1990,7 @@ function buildVrmaAnimationTracks({ sourceTracks = [], humanoidMap = {}, restPos
 
         setStatus('等待文件', 'idle');
         setHint('拖入一个标准 Humanoid FBX，或先点按钮选择文件。');
+        setActiveRailTab('overview');
         renderAll();
         resize();
         animate();
